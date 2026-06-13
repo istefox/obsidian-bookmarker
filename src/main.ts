@@ -1,10 +1,11 @@
-import { Notice, Plugin } from "obsidian";
+import { Plugin } from "obsidian";
 import {
 	BookmarkerSettings,
 	BookmarkerSettingTab,
 	DEFAULT_SETTINGS,
 } from "./settings";
 import { CaptureModal } from "./capture-modal";
+import { captureBookmark } from "./capture";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
@@ -21,8 +22,7 @@ export default class BookmarkerPlugin extends Plugin {
 					this.app,
 					this,
 					(url) => {
-						// M2 wires the fetch → metadata → classify → write pipeline here.
-						new Notice(`Bookmarker: ready to capture ${url} (pipeline lands in M2).`);
+						void captureBookmark(this, url);
 					},
 					initialUrl,
 				).open();
