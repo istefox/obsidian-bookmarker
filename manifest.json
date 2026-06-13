@@ -1,0 +1,9 @@
+{
+	"id": "obsidian-bookmarker",
+	"name": "Bookmarker",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.0",
+	"description": "Capture web URLs as Markdown bookmarks in your vault, with og:image preview, AI-proposed tags, and AI-proposed destination subfolder.",
+	"author": "Stefano Ferri",
+	"isDesktopOnly": false
+}
