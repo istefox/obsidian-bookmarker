@@ -6,7 +6,7 @@ export interface BookmarkerSettings {
 	classifierMode: "claude" | "heuristic";
 	model: string;
 	rootFolder: string;
-	assetSubfolder: string;
+	alwaysReview: boolean;
 	enableMicrolinkFallback: boolean;
 	enableFaviconFallback: boolean;
 	enableWaybackArchive: boolean;
@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	classifierMode: "claude",
 	model: "claude-haiku-4-5",
 	rootFolder: "_bookmarks",
-	assetSubfolder: "_assets",
+	alwaysReview: true,
 	enableMicrolinkFallback: true,
 	enableFaviconFallback: true,
 	enableWaybackArchive: true,
@@ -108,13 +108,16 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Asset subfolder")
-			.setDesc("Downloaded preview images are stored here, under the root folder.")
-			.addText((text) =>
-				text
-					.setValue(this.plugin.settings.assetSubfolder)
+			.setName("Always review before saving")
+			.setDesc(
+				"Open a review window (edit title, tags, and destination folder) before " +
+					"writing the note. Turn off for a silent one-click save with the proposed values.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.alwaysReview)
 					.onChange(async (value) => {
-						this.plugin.settings.assetSubfolder = value.trim() || "_assets";
+						this.plugin.settings.alwaysReview = value;
 						await this.plugin.saveSettings();
 					}),
 			);

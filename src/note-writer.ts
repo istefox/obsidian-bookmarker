@@ -1,101 +1,54 @@
-import { App, normalizePath, requestUrl, stringifyYaml, TFolder } from "obsidian";
+import { App, normalizePath, stringifyYaml, TFolder } from "obsidian";
 import { BookmarkerSettings } from "./settings";
-import { PageMetadata } from "./types";
+import { BookmarkDraft } from "./types";
 import { isSafeRemoteUrl } from "./url-safety";
 
+// Standard Open Graph image ratio (1200x630). Supplied to the link-embed card so
+// the obsidian-link-embed plugin renders without re-fetching image dimensions.
+const DEFAULT_ASPECT_RATIO = 1.91;
+
 /**
- * Write a bookmark note into the root folder (M2: no category subfolder yet —
- * the classifier picks a subfolder in M3). Downloads the preview image into the
- * asset subfolder; drops the image if the URL is unsafe or the download fails.
- * Returns the vault path of the created note.
+ * Write a bookmark note from the final (user-confirmed) draft. The preview image
+ * is rendered as an obsidian-link-embed card referencing the external image URL —
+ * no local file, no asset folder. Returns the vault path of the created note.
  */
 export async function writeBookmarkNote(
 	app: App,
 	settings: BookmarkerSettings,
-	url: string,
-	metadata: PageMetadata,
+	draft: BookmarkDraft,
 ): Promise<string> {
 	const root = normalizePath(settings.rootFolder);
-	await ensureFolder(app, root);
+	const targetDir = draft.folder
+		? normalizePath(`${root}/${draft.folder}`)
+		: root;
+	await ensureFolder(app, targetDir);
 
-	const slug = uniqueSlug(app, root, metadata.title);
-
-	let imageRef = "";
-	if (metadata.imageUrl) {
-		imageRef = await downloadImage(app, settings, root, slug, metadata.imageUrl);
-	}
-
-	const created = new Date().toISOString();
-	const notePath = `${root}/${slug}.md`;
-	await app.vault.create(notePath, buildNote(url, metadata, imageRef, created));
+	const slug = uniqueSlug(app, targetDir, draft.title);
+	const notePath = normalizePath(`${targetDir}/${slug}.md`);
+	await app.vault.create(notePath, buildNote(draft));
 	return notePath;
 }
 
-/**
- * Download the image into `<root>/<assetSubfolder>/` and return its vault path.
- * Returns "" (no image) if the URL fails the SSRF guard or the download fails —
- * we deliberately do NOT fall back to embedding the page-controlled external URL.
- */
-async function downloadImage(
-	app: App,
-	settings: BookmarkerSettings,
-	root: string,
-	slug: string,
-	imageUrl: string,
-): Promise<string> {
-	if (!isSafeRemoteUrl(imageUrl)) {
-		return "";
-	}
-	try {
-		const response = await requestUrl({ url: imageUrl, throw: false });
-		if (response.status < 200 || response.status >= 300) {
-			return "";
+/** Create a folder and any missing parents, tolerating folders that already exist. */
+async function ensureFolder(app: App, path: string): Promise<void> {
+	let current = "";
+	for (const part of path.split("/")) {
+		current = current ? `${current}/${part}` : part;
+		const existing = app.vault.getAbstractFileByPath(current);
+		if (existing instanceof TFolder) continue;
+		if (existing) {
+			throw new Error(`a file already exists where a folder is expected: ${current}`);
 		}
-		const ext = pickExtension(imageUrl, response.headers?.["content-type"]);
-		const assetDir = normalizePath(`${root}/${settings.assetSubfolder}`);
-		await ensureFolder(app, assetDir);
-		const assetPath = `${assetDir}/${slug}.${ext}`;
-		await app.vault.createBinary(assetPath, response.arrayBuffer);
-		return assetPath;
-	} catch {
-		return "";
+		await app.vault.createFolder(current);
 	}
 }
 
-function pickExtension(url: string, contentType?: string): string {
-	const byType: Record<string, string> = {
-		"image/jpeg": "jpg",
-		"image/jpg": "jpg",
-		"image/png": "png",
-		"image/gif": "gif",
-		"image/webp": "webp",
-		"image/svg+xml": "svg",
-		"image/avif": "avif",
-	};
-	if (contentType) {
-		const key = contentType.split(";")[0].trim().toLowerCase();
-		if (byType[key]) return byType[key];
-	}
-	try {
-		const match = new URL(url).pathname.match(
-			/\.(jpe?g|png|gif|webp|svg|avif)$/i,
-		);
-		if (match) {
-			const ext = match[1].toLowerCase();
-			return ext === "jpeg" ? "jpg" : ext;
-		}
-	} catch {
-		// fall through to default
-	}
-	return "png";
-}
-
-/** kebab-case slug of the title, truncated ~60 chars, deduped against the root. */
-function uniqueSlug(app: App, root: string, title: string): string {
+/** kebab-case slug of the title, truncated ~60 chars, deduped against the folder. */
+function uniqueSlug(app: App, dir: string, title: string): string {
 	const base = slugify(title) || "bookmark";
 	let candidate = base;
 	let n = 1;
-	while (app.vault.getAbstractFileByPath(`${root}/${candidate}.md`)) {
+	while (app.vault.getAbstractFileByPath(normalizePath(`${dir}/${candidate}.md`))) {
 		candidate = `${base}-${n++}`;
 	}
 	return candidate;
@@ -112,46 +65,43 @@ function slugify(title: string): string {
 		.replace(/-+$/g, "");
 }
 
-async function ensureFolder(app: App, path: string): Promise<void> {
-	const existing = app.vault.getAbstractFileByPath(path);
-	if (existing instanceof TFolder) return;
-	if (existing) {
-		throw new Error(`a file already exists where a folder is expected: ${path}`);
-	}
-	await app.vault.createFolder(path);
-}
+function buildNote(draft: BookmarkDraft): string {
+	const title = sanitizeText(draft.title) || draft.domain || "Bookmark";
+	const description = sanitizeText(draft.description);
+	const image = draft.imageUrl && isSafeRemoteUrl(draft.imageUrl) ? draft.imageUrl : "";
+	const favicon =
+		draft.faviconUrl && isSafeRemoteUrl(draft.faviconUrl) ? draft.faviconUrl : "";
 
-function buildNote(
-	url: string,
-	metadata: PageMetadata,
-	imageRef: string,
-	created: string,
-): string {
-	const title = sanitizeText(metadata.title) || metadata.domain || "Bookmark";
-	const description = sanitizeText(metadata.description);
-
-	// stringifyYaml handles quoting/escaping; we pass plain values.
 	const frontmatter = stringifyYaml({
-		url,
+		url: draft.url,
 		title,
 		description,
-		created,
-		domain: metadata.domain,
-		tags: [],
-		image: imageRef,
-		favicon: metadata.faviconUrl ?? "",
+		created: new Date().toISOString(),
+		domain: draft.domain,
+		tags: draft.tags,
+		image,
+		favicon,
 		archive: "",
 		source: "obsidian-bookmarker",
 	}).replace(/\s+$/, "");
 
 	const body: string[] = [`# ${title}`, ""];
-	if (imageRef) {
-		body.push(`![preview](${imageRef})`, "");
-	}
-	if (description) {
+	if (image) {
+		// obsidian-link-embed card: renders the image by URL (no local file).
+		const card = stringifyYaml({
+			title,
+			image,
+			description,
+			url: draft.url,
+			favicon,
+			aspectRatio: DEFAULT_ASPECT_RATIO,
+		}).replace(/\s+$/, "");
+		body.push("```embed", card, "```", "");
+	} else if (description) {
 		body.push(description, "");
 	}
-	body.push(`[${metadata.domain}](${url})`, "");
+	// Fallback link, useful even without the link-embed plugin installed.
+	body.push(`[${draft.domain}](${draft.url})`, "");
 
 	return `---\n${frontmatter}\n---\n\n${body.join("\n")}`;
 }

@@ -13,3 +13,53 @@
 	font-size: var(--font-ui-smaller);
 	min-height: 1.2em;
 }
+
+.bookmarker-preview {
+	display: block;
+	max-width: 100%;
+	max-height: 200px;
+	object-fit: cover;
+	border-radius: var(--radius-m);
+	margin-bottom: var(--size-4-3);
+}
+
+.bookmarker-wide-input {
+	width: 100%;
+}
+
+.bookmarker-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+}
+
+.bookmarker-tags-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.bookmarker-tag-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: 2px 8px;
+	background: var(--tag-background);
+	color: var(--tag-color);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+}
+
+.bookmarker-tag-remove {
+	cursor: pointer;
+	opacity: 0.7;
+}
+
+.bookmarker-tag-remove:hover {
+	opacity: 1;
+}
+
+.bookmarker-confidence {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin: var(--size-4-2) 0 0 0;
+}
