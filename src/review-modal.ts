@@ -7,6 +7,8 @@ export interface ReviewInput {
 	taxonomy: Taxonomy;
 	confidence: number;
 	allowNewFolders: boolean;
+	/** Preview-image candidates to choose from (first is the default). */
+	imageCandidates: string[];
 }
 
 /**
@@ -21,6 +23,8 @@ export class ReviewModal extends Modal {
 	private settled = false;
 	private tagsEl!: HTMLElement;
 	private errorEl!: HTMLElement;
+	private previewEl!: HTMLElement;
+	private coverOptionsEl!: HTMLElement;
 	private newFolder = "";
 
 	constructor(
@@ -38,12 +42,9 @@ export class ReviewModal extends Modal {
 		const { contentEl } = this;
 		contentEl.createEl("h2", { text: "Review bookmark" });
 
-		if (this.result.imageUrl && isSafeRemoteUrl(this.result.imageUrl)) {
-			contentEl.createEl("img", {
-				cls: "bookmarker-preview",
-				attr: { src: this.result.imageUrl },
-			});
-		}
+		this.previewEl = contentEl.createDiv();
+		this.renderPreview();
+		this.renderCoverPicker(contentEl);
 
 		new Setting(contentEl).setName("Title").addText((text) => {
 			text.setValue(this.result.title).onChange((v) => {
@@ -150,6 +151,78 @@ export class ReviewModal extends Modal {
 	onClose(): void {
 		this.contentEl.empty();
 		this.settle(null);
+	}
+
+	private renderPreview(): void {
+		this.previewEl.empty();
+		const url = this.result.imageUrl;
+		if (url && isSafeRemoteUrl(url)) {
+			this.previewEl.createEl("img", {
+				cls: "bookmarker-preview",
+				attr: { src: url },
+			});
+		} else {
+			this.previewEl.createDiv({
+				cls: "bookmarker-preview bookmarker-preview-empty",
+				text: "No cover",
+			});
+		}
+	}
+
+	private renderCoverPicker(parent: HTMLElement): void {
+		const setting = new Setting(parent)
+			.setName("Cover")
+			.setDesc("Pick a preview image, or paste your own below.");
+		this.coverOptionsEl = setting.controlEl.createDiv({ cls: "bookmarker-covers" });
+		this.renderCoverOptions();
+
+		new Setting(parent)
+			.setName("Cover URL")
+			.setDesc("Paste an image URL to use a custom cover.")
+			.addText((text) => {
+				text.setPlaceholder("https://…/image.jpg");
+				const commit = () => {
+					const url = text.getValue().trim();
+					if (url && isSafeRemoteUrl(url)) this.setCover(url);
+				};
+				text.inputEl.addEventListener("blur", commit);
+				text.inputEl.addEventListener("keydown", (e) => {
+					if (e.key === "Enter") {
+						e.preventDefault();
+						commit();
+					}
+				});
+				text.inputEl.addClass("bookmarker-wide-input");
+			});
+	}
+
+	private renderCoverOptions(): void {
+		this.coverOptionsEl.empty();
+		const none = this.coverOptionsEl.createDiv({
+			cls: "bookmarker-cover-option bookmarker-cover-none",
+			text: "None",
+		});
+		if (!this.result.imageUrl) none.addClass("bookmarker-cover-selected");
+		none.addEventListener("click", () => this.setCover(null));
+
+		for (const url of this.safeCandidates()) {
+			const opt = this.coverOptionsEl.createEl("img", {
+				cls: "bookmarker-cover-option",
+				attr: { src: url },
+			});
+			if (url === this.result.imageUrl) opt.addClass("bookmarker-cover-selected");
+			opt.addEventListener("click", () => this.setCover(url));
+		}
+	}
+
+	private setCover(url: string | null): void {
+		this.result.imageUrl = url;
+		this.renderPreview();
+		this.renderCoverOptions();
+	}
+
+	private safeCandidates(): string[] {
+		return this.input.imageCandidates.filter((u) => isSafeRemoteUrl(u));
 	}
 
 	private renderTags(): void {

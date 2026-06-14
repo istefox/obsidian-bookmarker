@@ -2,6 +2,7 @@ import { App, normalizePath, stringifyYaml, TFolder } from "obsidian";
 import { BookmarkerSettings } from "./settings";
 import { BookmarkDraft } from "./types";
 import { isSafeRemoteUrl } from "./url-safety";
+import { proxiedImage } from "./image";
 
 // Standard Open Graph image ratio (1200x630). Supplied to the link-embed card so
 // the obsidian-link-embed plugin renders without re-fetching image dimensions.
@@ -25,7 +26,7 @@ export async function writeBookmarkNote(
 
 	const name = uniqueName(app, targetDir, draft.name || draft.title);
 	const notePath = normalizePath(`${targetDir}/${name}.md`);
-	await app.vault.create(notePath, buildNote(draft));
+	await app.vault.create(notePath, buildNote(draft, settings));
 	return notePath;
 }
 
@@ -67,10 +68,12 @@ export function sanitizeFileName(name: string): string {
 	return out || "Bookmark";
 }
 
-function buildNote(draft: BookmarkDraft): string {
+function buildNote(draft: BookmarkDraft, settings: BookmarkerSettings): string {
 	const title = sanitizeText(draft.title) || draft.domain || "Bookmark";
 	const description = sanitizeText(draft.description);
-	const image = draft.imageUrl && isSafeRemoteUrl(draft.imageUrl) ? draft.imageUrl : "";
+	const safeImage =
+		draft.imageUrl && isSafeRemoteUrl(draft.imageUrl) ? draft.imageUrl : "";
+	const image = safeImage ? proxiedImage(safeImage, settings.useImageProxy) : "";
 	const favicon =
 		draft.faviconUrl && isSafeRemoteUrl(draft.faviconUrl) ? draft.faviconUrl : "";
 

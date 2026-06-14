@@ -2,6 +2,8 @@ import { Notice, TFile } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { fetchHtml, parseMetadata } from "./metadata";
 import { sanitizeFileName, writeBookmarkNote } from "./note-writer";
+import { fetchScreenshot } from "./image";
+import { isSafeRemoteUrl } from "./url-safety";
 import { classifyBookmark } from "./classifier";
 import { readTaxonomy } from "./taxonomy";
 import { ReviewModal } from "./review-modal";
@@ -34,6 +36,12 @@ export async function captureBookmark(
 			taxonomy,
 		);
 
+		const candidates = [...metadata.imageCandidates];
+		if (candidates.length === 0 && settings.enableScreenshotFallback) {
+			const shot = await fetchScreenshot(url);
+			if (shot && isSafeRemoteUrl(shot)) candidates.push(shot);
+		}
+
 		const draft: BookmarkDraft = {
 			url,
 			name: sanitizeFileName(metadata.title),
@@ -41,7 +49,7 @@ export async function captureBookmark(
 			description: metadata.description,
 			tags: classification.tags,
 			folder: classification.folder,
-			imageUrl: metadata.imageUrl,
+			imageUrl: candidates[0] ?? null,
 			faviconUrl: metadata.faviconUrl,
 			domain: metadata.domain,
 		};
@@ -49,7 +57,7 @@ export async function captureBookmark(
 		progress.hide();
 
 		const finalDraft = settings.alwaysReview
-			? await reviewDraft(plugin, draft, taxonomy, classification.confidence)
+			? await reviewDraft(plugin, draft, taxonomy, classification.confidence, candidates)
 			: draft;
 		if (!finalDraft) return; // cancelled in the review modal
 
@@ -72,6 +80,7 @@ function reviewDraft(
 	draft: BookmarkDraft,
 	taxonomy: Taxonomy,
 	confidence: number,
+	imageCandidates: string[],
 ): Promise<BookmarkDraft | null> {
 	return new Promise((resolve) => {
 		new ReviewModal(
@@ -81,6 +90,7 @@ function reviewDraft(
 				taxonomy,
 				confidence,
 				allowNewFolders: plugin.settings.allowNewFolders,
+				imageCandidates,
 			},
 			resolve,
 		).open();

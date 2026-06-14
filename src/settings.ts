@@ -7,7 +7,8 @@ export interface BookmarkerSettings {
 	model: string;
 	rootFolder: string;
 	alwaysReview: boolean;
-	enableMicrolinkFallback: boolean;
+	useImageProxy: boolean;
+	enableScreenshotFallback: boolean;
 	enableFaviconFallback: boolean;
 	enableWaybackArchive: boolean;
 	allowNewTags: boolean;
@@ -22,7 +23,8 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	model: "claude-haiku-4-5",
 	rootFolder: "_bookmarks",
 	alwaysReview: true,
-	enableMicrolinkFallback: true,
+	useImageProxy: true,
+	enableScreenshotFallback: true,
 	enableFaviconFallback: true,
 	enableWaybackArchive: true,
 	allowNewTags: true,
@@ -145,19 +147,37 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl).setName("Free service layers").setHeading();
-
 		new Setting(containerEl)
-			.setName("Microlink image fallback")
-			.setDesc("Fetch a preview image when the page exposes no og:image.")
+			.setName("Cache & privacy proxy")
+			.setDesc(
+				"Serve preview images through wsrv.nl: caching, resizing, and it hides " +
+					"your IP from the origin site. Trade-off: wsrv.nl sees the image URLs.",
+			)
 			.addToggle((toggle) =>
 				toggle
-					.setValue(this.plugin.settings.enableMicrolinkFallback)
+					.setValue(this.plugin.settings.useImageProxy)
 					.onChange(async (value) => {
-						this.plugin.settings.enableMicrolinkFallback = value;
+						this.plugin.settings.useImageProxy = value;
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		new Setting(containerEl)
+			.setName("Screenshot fallback")
+			.setDesc(
+				"When a page exposes no image, fetch a Microlink screenshot (synchronous, " +
+					"no placeholder). Free, ~50/day; may still fail on bot-protected sites like Amazon.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableScreenshotFallback)
+					.onChange(async (value) => {
+						this.plugin.settings.enableScreenshotFallback = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl).setName("Free service layers").setHeading();
 
 		new Setting(containerEl)
 			.setName("Favicon fallback")

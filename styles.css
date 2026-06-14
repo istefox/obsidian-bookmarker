@@ -63,3 +63,42 @@
 	font-size: var(--font-ui-smaller);
 	margin: var(--size-4-2) 0 0 0;
 }
+
+.bookmarker-preview-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 120px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.bookmarker-covers {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	justify-content: flex-end;
+}
+
+.bookmarker-cover-option {
+	width: 72px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: var(--radius-s);
+	border: 2px solid transparent;
+	cursor: pointer;
+}
+
+.bookmarker-cover-none {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.bookmarker-cover-selected {
+	border-color: var(--interactive-accent);
+}

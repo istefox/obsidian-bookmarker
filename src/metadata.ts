@@ -30,11 +30,8 @@ export function parseMetadata(
 		metaContent(doc, 'meta[name="description"]') ||
 		"";
 
-	const rawImage =
-		metaContent(doc, 'meta[property="og:image"]') ||
-		metaContent(doc, 'meta[name="twitter:image"]') ||
-		metaContent(doc, 'meta[property="twitter:image"]');
-	const imageUrl = resolveUrl(rawImage, pageUrl);
+	const imageCandidates = collectImages(doc, pageUrl);
+	const imageUrl = imageCandidates[0] ?? null;
 
 	const rawFavicon =
 		doc.querySelector('link[rel~="icon"]')?.getAttribute("href") ?? "";
@@ -42,12 +39,89 @@ export function parseMetadata(
 
 	const excerpt = extractExcerpt(doc, excerptLength);
 
-	return { title, description, imageUrl, faviconUrl, excerpt, domain };
+	return { title, description, imageUrl, imageCandidates, faviconUrl, excerpt, domain };
 }
 
 function metaContent(doc: Document, selector: string): string {
 	return doc.querySelector(selector)?.getAttribute("content")?.trim() ?? "";
 }
+
+/**
+ * Collect STRUCTURED preview-image candidates in priority order, each resolved and
+ * SSRF-guarded, deduped: og:image → twitter:image → link rel=image_src → JSON-LD.
+ * We deliberately do NOT scrape arbitrary <img> tags (on pages like Amazon that picks
+ * promo banners). When this is empty, the caller falls back to a page screenshot.
+ */
+function collectImages(doc: Document, pageUrl: string): string[] {
+	const raw = [
+		metaContent(doc, 'meta[property="og:image"]'),
+		metaContent(doc, 'meta[name="twitter:image"]'),
+		metaContent(doc, 'meta[property="twitter:image"]'),
+		doc.querySelector('link[rel="image_src"]')?.getAttribute("href") ?? "",
+		jsonLdImage(doc),
+	];
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const candidate of raw) {
+		const resolved = resolveUrl(candidate, pageUrl);
+		if (resolved && !seen.has(resolved)) {
+			seen.add(resolved);
+			out.push(resolved);
+		}
+	}
+	return out;
+}
+
+/** Pull an `image` out of any JSON-LD block (string, {url}, or array of those). */
+function jsonLdImage(doc: Document): string {
+	const blocks = doc.querySelectorAll('script[type="application/ld+json"]');
+	for (const block of Array.from(blocks)) {
+		let data: unknown;
+		try {
+			data = JSON.parse(block.textContent ?? "");
+		} catch {
+			continue;
+		}
+		const found = pickJsonLdImage(data);
+		if (found) return found;
+	}
+	return "";
+}
+
+function pickJsonLdImage(data: unknown): string {
+	const nodes = Array.isArray(data) ? data : [data];
+	for (const node of nodes) {
+		if (!node || typeof node !== "object") continue;
+		const image = (node as { image?: unknown }).image;
+		const url = imageValueToUrl(image);
+		if (url) return url;
+		// Common nesting: { "@graph": [ ... ] }
+		const graph = (node as { "@graph"?: unknown })["@graph"];
+		if (graph) {
+			const nested = pickJsonLdImage(graph);
+			if (nested) return nested;
+		}
+	}
+	return "";
+}
+
+function imageValueToUrl(image: unknown): string {
+	if (!image) return "";
+	if (typeof image === "string") return image;
+	if (Array.isArray(image)) {
+		for (const item of image) {
+			const url = imageValueToUrl(item);
+			if (url) return url;
+		}
+		return "";
+	}
+	if (typeof image === "object") {
+		const url = (image as { url?: unknown }).url;
+		return typeof url === "string" ? url : "";
+	}
+	return "";
+}
+
 
 /**
  * Resolve a possibly-relative URL against the page base. Returns null if empty,

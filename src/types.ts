@@ -2,8 +2,10 @@
 export interface PageMetadata {
 	title: string;
 	description: string;
-	/** Absolute image URL (og:image / twitter:image), or null if none found. */
+	/** Absolute image URL (first candidate), or null if none found. */
 	imageUrl: string | null;
+	/** All resolved, SSRF-safe preview-image candidates, in priority order. */
+	imageCandidates: string[];
 	/** Absolute favicon URL, or null if the page declares none. */
 	faviconUrl: string | null;
 	/** Plain-text excerpt of the page body (fed to the classifier). */
