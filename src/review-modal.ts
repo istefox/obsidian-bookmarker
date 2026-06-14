@@ -53,6 +53,16 @@ export class ReviewModal extends Modal {
 			text.inputEl.addClass("bookmarker-wide-input");
 		});
 
+		new Setting(contentEl)
+			.setName("Note name")
+			.setDesc("The file name of the note. Defaults to the title; edit to rename.")
+			.addText((text) => {
+				text.setValue(this.result.name).onChange((v) => {
+					this.result.name = v;
+				});
+				text.inputEl.addClass("bookmarker-wide-input");
+			});
+
 		new Setting(contentEl).setName("URL").addText((text) => {
 			text.setValue(this.result.url).setDisabled(true);
 			text.inputEl.addClass("bookmarker-wide-input");
@@ -166,6 +176,7 @@ export class ReviewModal extends Modal {
 			return;
 		}
 		this.result.title = title;
+		if (!this.result.name.trim()) this.result.name = title;
 		if (this.newFolder) this.result.folder = this.newFolder;
 		const draft = this.result;
 		this.settle(draft);

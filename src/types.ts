@@ -46,6 +46,8 @@ export interface Classifier {
 /** Final, user-confirmed values written to the note. `folder` "" means root. */
 export interface BookmarkDraft {
 	url: string;
+	/** Desired file name (no extension); defaults to a readable form of the title. */
+	name: string;
 	title: string;
 	description: string;
 	tags: string[];

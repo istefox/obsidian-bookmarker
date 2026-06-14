@@ -23,8 +23,8 @@ export async function writeBookmarkNote(
 		: root;
 	await ensureFolder(app, targetDir);
 
-	const slug = uniqueSlug(app, targetDir, draft.title);
-	const notePath = normalizePath(`${targetDir}/${slug}.md`);
+	const name = uniqueName(app, targetDir, draft.name || draft.title);
+	const notePath = normalizePath(`${targetDir}/${name}.md`);
 	await app.vault.create(notePath, buildNote(draft));
 	return notePath;
 }
@@ -43,26 +43,28 @@ async function ensureFolder(app: App, path: string): Promise<void> {
 	}
 }
 
-/** kebab-case slug of the title, truncated ~60 chars, deduped against the folder. */
-function uniqueSlug(app: App, dir: string, title: string): string {
-	const base = slugify(title) || "bookmark";
+/** Readable, filesystem-safe file name, deduped against the folder with " 1", " 2". */
+function uniqueName(app: App, dir: string, name: string): string {
+	const base = sanitizeFileName(name);
 	let candidate = base;
 	let n = 1;
 	while (app.vault.getAbstractFileByPath(normalizePath(`${dir}/${candidate}.md`))) {
-		candidate = `${base}-${n++}`;
+		candidate = `${base} ${n++}`;
 	}
 	return candidate;
 }
 
-function slugify(title: string): string {
-	return title
-		.toLowerCase()
-		.normalize("NFKD")
-		.replace(/[̀-ͯ]/g, "")
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "")
-		.slice(0, 60)
-		.replace(/-+$/g, "");
+/** Strip characters Obsidian/filesystems reject, keep it readable. */
+export function sanitizeFileName(name: string): string {
+	let out = "";
+	for (const ch of name) {
+		const code = ch.charCodeAt(0);
+		const illegal = '\\/:*?"<>|'.includes(ch);
+		const control = code <= 0x1f || code === 0x7f;
+		out += illegal || control ? " " : ch;
+	}
+	out = out.replace(/\s+/g, " ").trim().slice(0, 100).trim();
+	return out || "Bookmark";
 }
 
 function buildNote(draft: BookmarkDraft): string {

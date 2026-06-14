@@ -1,7 +1,7 @@
 import { Notice, TFile } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { fetchHtml, parseMetadata } from "./metadata";
-import { writeBookmarkNote } from "./note-writer";
+import { sanitizeFileName, writeBookmarkNote } from "./note-writer";
 import { classifyBookmark } from "./classifier";
 import { readTaxonomy } from "./taxonomy";
 import { ReviewModal } from "./review-modal";
@@ -36,6 +36,7 @@ export async function captureBookmark(
 
 		const draft: BookmarkDraft = {
 			url,
+			name: sanitizeFileName(metadata.title),
 			title: metadata.title,
 			description: metadata.description,
 			tags: classification.tags,
