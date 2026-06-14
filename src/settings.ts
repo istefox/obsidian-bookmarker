@@ -6,12 +6,15 @@ export interface BookmarkerSettings {
 	classifierMode: "claude" | "heuristic";
 	model: string;
 	rootFolder: string;
-	assetSubfolder: string;
-	enableMicrolinkFallback: boolean;
+	alwaysReview: boolean;
+	useImageProxy: boolean;
+	enableScreenshotFallback: boolean;
 	enableFaviconFallback: boolean;
 	enableWaybackArchive: boolean;
 	allowNewTags: boolean;
 	allowNewFolders: boolean;
+	warnOnDuplicate: boolean;
+	warnOnSameDomain: boolean;
 	maxTags: number;
 	excerptLength: number;
 }
@@ -21,12 +24,15 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	classifierMode: "claude",
 	model: "claude-haiku-4-5",
 	rootFolder: "_bookmarks",
-	assetSubfolder: "_assets",
-	enableMicrolinkFallback: true,
+	alwaysReview: true,
+	useImageProxy: true,
+	enableScreenshotFallback: true,
 	enableFaviconFallback: true,
 	enableWaybackArchive: true,
-	allowNewTags: false,
+	allowNewTags: true,
 	allowNewFolders: true,
+	warnOnDuplicate: true,
+	warnOnSameDomain: true,
 	maxTags: 5,
 	excerptLength: 1500,
 };
@@ -108,30 +114,74 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Asset subfolder")
-			.setDesc("Downloaded preview images are stored here, under the root folder.")
-			.addText((text) =>
-				text
-					.setValue(this.plugin.settings.assetSubfolder)
+			.setName("Always review before saving")
+			.setDesc(
+				"Open a review window (edit title, tags, and destination folder) before " +
+					"writing the note. Turn off for a silent one-click save with the proposed values.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.alwaysReview)
 					.onChange(async (value) => {
-						this.plugin.settings.assetSubfolder = value.trim() || "_assets";
+						this.plugin.settings.alwaysReview = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl).setName("Preview").setHeading();
+
+		new Setting(containerEl)
+			.setName("Preview card plugin")
+			.setDesc(
+				"Image previews render as cards via the obsidian-link-embed community " +
+					"plugin. Install it to see the card; without it the note shows the raw " +
+					"embed block plus a fallback link.",
+			)
+			.addButton((button) =>
+				button
+					.setButtonText("Install link-embed")
+					.setCta()
+					.onClick(() => {
+						window.open("obsidian://show-plugin?id=obsidian-link-embed");
+					}),
+			)
+			.addButton((button) =>
+				button.setButtonText("GitHub").onClick(() => {
+					window.open("https://github.com/Seraphli/obsidian-link-embed");
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName("Cache & privacy proxy")
+			.setDesc(
+				"Serve preview images through wsrv.nl: caching, resizing, and it hides " +
+					"your IP from the origin site. Trade-off: wsrv.nl sees the image URLs.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.useImageProxy)
+					.onChange(async (value) => {
+						this.plugin.settings.useImageProxy = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Screenshot fallback")
+			.setDesc(
+				"When a page exposes no image, fetch a Microlink screenshot (synchronous, " +
+					"no placeholder). Free, ~50/day; may still fail on bot-protected sites like Amazon.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableScreenshotFallback)
+					.onChange(async (value) => {
+						this.plugin.settings.enableScreenshotFallback = value;
 						await this.plugin.saveSettings();
 					}),
 			);
 
 		new Setting(containerEl).setName("Free service layers").setHeading();
-
-		new Setting(containerEl)
-			.setName("Microlink image fallback")
-			.setDesc("Fetch a preview image when the page exposes no og:image.")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.enableMicrolinkFallback)
-					.onChange(async (value) => {
-						this.plugin.settings.enableMicrolinkFallback = value;
-						await this.plugin.saveSettings();
-					}),
-			);
 
 		new Setting(containerEl)
 			.setName("Favicon fallback")
@@ -179,6 +229,36 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.allowNewFolders)
 					.onChange(async (value) => {
 						this.plugin.settings.allowNewFolders = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Warn on duplicate URL")
+			.setDesc(
+				"Before saving, check if the URL is already bookmarked. In the review " +
+					"window you can open the existing note or save anyway.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.warnOnDuplicate)
+					.onChange(async (value) => {
+						this.plugin.settings.warnOnDuplicate = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Notice on same domain")
+			.setDesc(
+				"Show a discreet notice when you already have bookmarks from the same site " +
+					"(different page). No confirmation, just a heads-up with a link to see them.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.warnOnSameDomain)
+					.onChange(async (value) => {
+						this.plugin.settings.warnOnSameDomain = value;
 						await this.plugin.saveSettings();
 					}),
 			);

@@ -1,5 +1,6 @@
 import { App, Modal, Setting } from "obsidian";
 import type BookmarkerPlugin from "./main";
+import { isHttpUrl } from "./url-safety";
 
 /**
  * M1 capture modal: manual URL entry with inline validation.
@@ -75,11 +76,6 @@ export class CaptureModal extends Modal {
 	}
 
 	private isValidUrl(value: string): boolean {
-		try {
-			const parsed = new URL(value);
-			return parsed.protocol === "http:" || parsed.protocol === "https:";
-		} catch {
-			return false;
-		}
+		return isHttpUrl(value);
 	}
 }

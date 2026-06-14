@@ -1,0 +1,15 @@
+{
+	"manifest_version": 3,
+	"name": "Bookmarker for Obsidian",
+	"version": "0.1.0",
+	"description": "One-click: save the current page to your Obsidian vault via the Bookmarker plugin.",
+	"action": {
+		"default_title": "Bookmark this page in Obsidian"
+	},
+	"background": {
+		"service_worker": "background.js"
+	},
+	"permissions": [
+		"activeTab"
+	]
+}
