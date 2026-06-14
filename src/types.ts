@@ -11,6 +11,8 @@ export interface PageMetadata {
 	/** Plain-text excerpt of the page body (fed to the classifier). */
 	excerpt: string;
 	domain: string;
+	/** Detected content type: article|video|image|document|audio|link. */
+	type: string;
 }
 
 /** What the classifier sees about a page (brief §6). */
@@ -57,4 +59,6 @@ export interface BookmarkDraft {
 	imageUrl: string | null;
 	faviconUrl: string | null;
 	domain: string;
+	type: string;
+	favorite: boolean;
 }

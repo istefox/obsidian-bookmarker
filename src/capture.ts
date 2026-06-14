@@ -64,6 +64,8 @@ export async function captureBookmark(
 			imageUrl: candidates[0] ?? null,
 			faviconUrl: metadata.faviconUrl,
 			domain: metadata.domain,
+			type: metadata.type,
+			favorite: false,
 		};
 
 		progress.hide();

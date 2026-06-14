@@ -1,4 +1,4 @@
-import { ItemView, normalizePath, TFile, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, normalizePath, TFile, WorkspaceLeaf } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { isSafeRemoteUrl } from "./url-safety";
 
@@ -14,6 +14,8 @@ interface BookmarkItem {
 	domain: string;
 	folder: string;
 	created: string;
+	type: string;
+	favorite: boolean;
 }
 
 /** Raindrop-like board: a grid of cover cards for the saved bookmarks (read-only). */
@@ -24,6 +26,8 @@ export class BookmarkView extends ItemView {
 	private folderFilter = "";
 	private tagFilter = "";
 	private domainFilter = "";
+	private typeFilter = "";
+	private favoritesOnly = false;
 	private gridEl!: HTMLElement;
 	private countEl!: HTMLElement;
 
@@ -86,6 +90,8 @@ export class BookmarkView extends ItemView {
 				domain: asString(fm.domain),
 				folder: parent.startsWith(prefix) ? parent.slice(prefix.length) : "",
 				created: asString(fm.created),
+				type: asString(fm.type) || "link",
+				favorite: fm.favorite === true,
 			});
 		}
 		items.sort((a, b) => b.created.localeCompare(a.created));
@@ -123,6 +129,27 @@ export class BookmarkView extends ItemView {
 		}
 		folderSel.addEventListener("change", () => {
 			this.folderFilter = folderSel.value;
+			this.renderGrid();
+		});
+
+		const types = unique(this.items.map((i) => i.type).filter(Boolean)).sort();
+		const typeSel = toolbar.createEl("select", { cls: "bookmarker-type-select" });
+		typeSel.createEl("option", { value: "", text: "All types" });
+		for (const type of types) typeSel.createEl("option", { value: type, text: type });
+		typeSel.value = this.typeFilter;
+		typeSel.addEventListener("change", () => {
+			this.typeFilter = typeSel.value;
+			this.renderGrid();
+		});
+
+		const favChip = toolbar.createSpan({
+			cls: "bookmarker-tag-chip",
+			text: "★ Favorites",
+		});
+		if (this.favoritesOnly) favChip.addClass("bookmarker-tag-active");
+		favChip.addEventListener("click", () => {
+			this.favoritesOnly = !this.favoritesOnly;
+			favChip.toggleClass("bookmarker-tag-active", this.favoritesOnly);
 			this.renderGrid();
 		});
 
@@ -177,6 +204,8 @@ export class BookmarkView extends ItemView {
 				return false;
 			}
 			if (this.folderFilter && item.folder !== this.folderFilter) return false;
+			if (this.typeFilter && item.type !== this.typeFilter) return false;
+			if (this.favoritesOnly && !item.favorite) return false;
 			if (this.tagFilter && !item.tags.includes(this.tagFilter)) return false;
 			if (this.search) {
 				const hay =
@@ -196,6 +225,39 @@ export class BookmarkView extends ItemView {
 		} else {
 			cover.addClass("bookmarker-card-cover-empty");
 			cover.setText(item.domain || "No cover");
+		}
+
+		const star = cover.createSpan({
+			cls: "bookmarker-card-star",
+			text: item.favorite ? "★" : "☆",
+		});
+		if (item.favorite) star.addClass("bookmarker-card-star-on");
+		let busy = false;
+		star.addEventListener("click", (event) => {
+			event.stopPropagation();
+			if (busy) return;
+			busy = true;
+			const next = !item.favorite;
+			void this.app.fileManager
+				.processFrontMatter(item.file, (fm: Record<string, unknown>) => {
+					fm.favorite = next;
+				})
+				.then(() => {
+					// Update in-memory state only after the write succeeds.
+					item.favorite = next;
+					this.renderGrid();
+				})
+				.catch((err: unknown) => {
+					const msg = err instanceof Error ? err.message : String(err);
+					new Notice(`Failed to update favorite: ${msg}`);
+				})
+				.finally(() => {
+					busy = false;
+				});
+		});
+
+		if (item.type && item.type !== "link") {
+			cover.createSpan({ cls: "bookmarker-card-type", text: item.type });
 		}
 
 		card.createDiv({ cls: "bookmarker-card-title", text: item.title });

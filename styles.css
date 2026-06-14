@@ -171,9 +171,37 @@
 }
 
 .bookmarker-card-cover {
+	position: relative;
 	aspect-ratio: 16 / 9;
 	overflow: hidden;
 	background: var(--background-primary);
+}
+
+.bookmarker-card-star {
+	position: absolute;
+	top: 4px;
+	right: 6px;
+	cursor: pointer;
+	color: rgba(255, 255, 255, 0.85);
+	text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+	font-size: 18px;
+	line-height: 1;
+}
+
+.bookmarker-card-star-on {
+	color: var(--color-yellow, gold);
+}
+
+.bookmarker-card-type {
+	position: absolute;
+	bottom: 4px;
+	left: 6px;
+	padding: 1px 6px;
+	border-radius: var(--radius-s);
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
+	font-size: var(--font-ui-smaller);
+	text-transform: uppercase;
 }
 
 .bookmarker-card-cover img {

@@ -2,6 +2,8 @@ import { App, Modal, Setting, TFile } from "obsidian";
 import { BookmarkDraft, Taxonomy } from "./types";
 import { isSafeRemoteUrl } from "./url-safety";
 
+const BOOKMARK_TYPES = ["article", "video", "image", "document", "audio", "link"];
+
 export interface ReviewInput {
 	draft: BookmarkDraft;
 	taxonomy: Taxonomy;
@@ -107,6 +109,22 @@ export class ReviewModal extends Modal {
 			});
 			area.inputEl.addClass("bookmarker-wide-input");
 			area.inputEl.rows = 3;
+		});
+
+		new Setting(contentEl).setName("Type").addDropdown((dropdown) => {
+			for (const type of BOOKMARK_TYPES) dropdown.addOption(type, type);
+			if (this.result.type && !BOOKMARK_TYPES.includes(this.result.type)) {
+				dropdown.addOption(this.result.type, this.result.type);
+			}
+			dropdown.setValue(this.result.type).onChange((v) => {
+				this.result.type = v;
+			});
+		});
+
+		new Setting(contentEl).setName("Favorite").addToggle((toggle) => {
+			toggle.setValue(this.result.favorite).onChange((v) => {
+				this.result.favorite = v;
+			});
 		});
 
 		// Tags: removable chips + an add-tag input.

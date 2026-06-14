@@ -83,6 +83,8 @@ function buildNote(draft: BookmarkDraft, settings: BookmarkerSettings): string {
 		description,
 		created: new Date().toISOString(),
 		domain: draft.domain,
+		type: draft.type,
+		favorite: draft.favorite,
 		tags: draft.tags,
 		image,
 		favicon,
