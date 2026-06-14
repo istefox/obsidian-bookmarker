@@ -8,6 +8,8 @@ import { CaptureModal } from "./capture-modal";
 import { captureBookmark } from "./capture";
 import { isHttpUrl } from "./url-safety";
 import { BOOKMARK_VIEW_TYPE, BookmarkView } from "./bookmark-view";
+import { checkBrokenLinks } from "./link-check";
+import { ImportModal } from "./import-modal";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
@@ -56,11 +58,38 @@ export default class BookmarkerPlugin extends Plugin {
 			name: "Open bookmarks board",
 			callback: () => void this.openBoard(),
 		});
+		this.addCommand({
+			id: "check-broken-links",
+			name: "Check for broken links",
+			callback: () => void this.runBrokenLinkCheck(),
+		});
+		this.addCommand({
+			id: "import-bookmarks",
+			name: "Import bookmarks…",
+			callback: () => new ImportModal(this.app, this).open(),
+		});
 
 		this.addSettingTab(new BookmarkerSettingTab(this.app, this));
 	}
 
 	onunload(): void {}
+
+	private async runBrokenLinkCheck(): Promise<void> {
+		const notice = new Notice("Checking links…", 0);
+		try {
+			const { checked, broken } = await checkBrokenLinks(
+				this.app,
+				this.settings,
+				(done, total) => notice.setMessage(`Checking links ${done}/${total}…`),
+			);
+			notice.hide();
+			new Notice(`Checked ${checked} bookmark(s): ${broken} broken.`);
+		} catch (error) {
+			notice.hide();
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`Link check failed: ${message}`);
+		}
+	}
 
 	/** Reveal the bookmarks board, creating its leaf if needed; optionally filter by domain. */
 	async openBoard(domain?: string): Promise<void> {

@@ -53,7 +53,7 @@ export function parseMetadata(
 }
 
 /** Infer a coarse content type from the URL, domain, and og:type. */
-function detectType(url: string, ogType: string): string {
+export function detectType(url: string, ogType: string): string {
 	const lower = url.toLowerCase();
 	if (/\.(pdf|docx?|pptx?|xlsx?|epub|odt|rtf)(\?|#|$)/.test(lower)) return "document";
 	if (/\.(jpe?g|png|gif|webp|svg|bmp|avif)(\?|#|$)/.test(lower)) return "image";

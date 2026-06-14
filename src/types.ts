@@ -61,4 +61,6 @@ export interface BookmarkDraft {
 	domain: string;
 	type: string;
 	favorite: boolean;
+	/** ISO creation date; defaults to now when omitted (set on import). */
+	created?: string;
 }

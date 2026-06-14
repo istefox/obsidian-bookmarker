@@ -19,15 +19,23 @@ export async function writeBookmarkNote(
 	draft: BookmarkDraft,
 ): Promise<string> {
 	const root = normalizePath(settings.rootFolder);
-	const targetDir = draft.folder
-		? normalizePath(`${root}/${draft.folder}`)
-		: root;
+	const safeFolder = sanitizeFolderPath(draft.folder);
+	const targetDir = safeFolder ? normalizePath(`${root}/${safeFolder}`) : root;
 	await ensureFolder(app, targetDir);
 
 	const name = uniqueName(app, targetDir, draft.name || draft.title);
 	const notePath = normalizePath(`${targetDir}/${name}.md`);
 	await app.vault.create(notePath, buildNote(draft, settings));
 	return notePath;
+}
+
+/** Filesystem-safe relative folder path: drop ".."/"." segments and illegal chars. */
+function sanitizeFolderPath(folder: string): string {
+	return folder
+		.split(/[/\\]+/)
+		.map((seg) => seg.replace(/[\\/:*?"<>|]/g, "").trim())
+		.filter((seg) => seg && seg !== "." && seg !== "..")
+		.join("/");
 }
 
 /** Create a folder and any missing parents, tolerating folders that already exist. */
@@ -81,7 +89,7 @@ function buildNote(draft: BookmarkDraft, settings: BookmarkerSettings): string {
 		url: draft.url,
 		title,
 		description,
-		created: new Date().toISOString(),
+		created: draft.created || new Date().toISOString(),
 		domain: draft.domain,
 		type: draft.type,
 		favorite: draft.favorite,

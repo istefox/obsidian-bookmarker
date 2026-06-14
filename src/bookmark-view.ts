@@ -16,6 +16,7 @@ interface BookmarkItem {
 	created: string;
 	type: string;
 	favorite: boolean;
+	broken: boolean;
 }
 
 /** Raindrop-like board: a grid of cover cards for the saved bookmarks (read-only). */
@@ -28,6 +29,7 @@ export class BookmarkView extends ItemView {
 	private domainFilter = "";
 	private typeFilter = "";
 	private favoritesOnly = false;
+	private brokenOnly = false;
 	private gridEl!: HTMLElement;
 	private countEl!: HTMLElement;
 
@@ -92,6 +94,7 @@ export class BookmarkView extends ItemView {
 				created: asString(fm.created),
 				type: asString(fm.type) || "link",
 				favorite: fm.favorite === true,
+				broken: fm.broken === true,
 			});
 		}
 		items.sort((a, b) => b.created.localeCompare(a.created));
@@ -153,6 +156,17 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
+		const brokenChip = toolbar.createSpan({
+			cls: "bookmarker-tag-chip",
+			text: "Broken",
+		});
+		if (this.brokenOnly) brokenChip.addClass("bookmarker-tag-active");
+		brokenChip.addEventListener("click", () => {
+			this.brokenOnly = !this.brokenOnly;
+			brokenChip.toggleClass("bookmarker-tag-active", this.brokenOnly);
+			this.renderGrid();
+		});
+
 		const refresh = toolbar.createEl("button", {
 			cls: "bookmarker-refresh",
 			text: "Refresh",
@@ -206,6 +220,7 @@ export class BookmarkView extends ItemView {
 			if (this.folderFilter && item.folder !== this.folderFilter) return false;
 			if (this.typeFilter && item.type !== this.typeFilter) return false;
 			if (this.favoritesOnly && !item.favorite) return false;
+			if (this.brokenOnly && !item.broken) return false;
 			if (this.tagFilter && !item.tags.includes(this.tagFilter)) return false;
 			if (this.search) {
 				const hay =
@@ -258,6 +273,9 @@ export class BookmarkView extends ItemView {
 
 		if (item.type && item.type !== "link") {
 			cover.createSpan({ cls: "bookmarker-card-type", text: item.type });
+		}
+		if (item.broken) {
+			cover.createSpan({ cls: "bookmarker-card-broken", text: "broken" });
 		}
 
 		card.createDiv({ cls: "bookmarker-card-title", text: item.title });

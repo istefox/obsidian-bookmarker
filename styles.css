@@ -204,6 +204,18 @@
 	text-transform: uppercase;
 }
 
+.bookmarker-card-broken {
+	position: absolute;
+	bottom: 4px;
+	right: 6px;
+	padding: 1px 6px;
+	border-radius: var(--radius-s);
+	background: var(--text-error);
+	color: #fff;
+	font-size: var(--font-ui-smaller);
+	text-transform: uppercase;
+}
+
 .bookmarker-card-cover img {
 	width: 100%;
 	height: 100%;
