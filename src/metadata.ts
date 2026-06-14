@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import { PageMetadata } from "./types";
+import { isSafeRemoteUrl } from "./url-safety";
 
 /** Fetch a page's HTML via Obsidian's requestUrl (CORS-free, mobile-safe). */
 export async function fetchHtml(url: string): Promise<string> {
@@ -48,14 +49,19 @@ function metaContent(doc: Document, selector: string): string {
 	return doc.querySelector(selector)?.getAttribute("content")?.trim() ?? "";
 }
 
-/** Resolve a possibly-relative URL against the page base; null if invalid/empty. */
+/**
+ * Resolve a possibly-relative URL against the page base. Returns null if empty,
+ * invalid, or rejected by the SSRF guard (non-http(s) or private host).
+ */
 function resolveUrl(value: string, base: string): string | null {
 	if (!value) return null;
+	let href: string;
 	try {
-		return new URL(value, base).href;
+		href = new URL(value, base).href;
 	} catch {
 		return null;
 	}
+	return isSafeRemoteUrl(href) ? href : null;
 }
 
 function safeHostname(url: string): string {

@@ -1,11 +1,12 @@
-import { App, normalizePath, requestUrl, TFolder } from "obsidian";
+import { App, normalizePath, requestUrl, stringifyYaml, TFolder } from "obsidian";
 import { BookmarkerSettings } from "./settings";
 import { PageMetadata } from "./types";
+import { isSafeRemoteUrl } from "./url-safety";
 
 /**
  * Write a bookmark note into the root folder (M2: no category subfolder yet —
  * the classifier picks a subfolder in M3). Downloads the preview image into the
- * asset subfolder; on download failure keeps the external image URL instead.
+ * asset subfolder; drops the image if the URL is unsafe or the download fails.
  * Returns the vault path of the created note.
  */
 export async function writeBookmarkNote(
@@ -30,8 +31,11 @@ export async function writeBookmarkNote(
 	return notePath;
 }
 
-/** Download the image into `<root>/<assetSubfolder>/`; return its vault path, or
- *  the original external URL if the download fails. */
+/**
+ * Download the image into `<root>/<assetSubfolder>/` and return its vault path.
+ * Returns "" (no image) if the URL fails the SSRF guard or the download fails —
+ * we deliberately do NOT fall back to embedding the page-controlled external URL.
+ */
 async function downloadImage(
 	app: App,
 	settings: BookmarkerSettings,
@@ -39,10 +43,13 @@ async function downloadImage(
 	slug: string,
 	imageUrl: string,
 ): Promise<string> {
+	if (!isSafeRemoteUrl(imageUrl)) {
+		return "";
+	}
 	try {
 		const response = await requestUrl({ url: imageUrl, throw: false });
 		if (response.status < 200 || response.status >= 300) {
-			return imageUrl;
+			return "";
 		}
 		const ext = pickExtension(imageUrl, response.headers?.["content-type"]);
 		const assetDir = normalizePath(`${root}/${settings.assetSubfolder}`);
@@ -51,7 +58,7 @@ async function downloadImage(
 		await app.vault.createBinary(assetPath, response.arrayBuffer);
 		return assetPath;
 	} catch {
-		return imageUrl;
+		return "";
 	}
 }
 
@@ -120,35 +127,44 @@ function buildNote(
 	imageRef: string,
 	created: string,
 ): string {
-	const frontmatter = [
-		"---",
-		`url: ${yaml(url)}`,
-		`title: ${yaml(metadata.title)}`,
-		`description: ${yaml(metadata.description)}`,
-		`created: ${yaml(created)}`,
-		`domain: ${yaml(metadata.domain)}`,
-		"tags: []",
-		`image: ${yaml(imageRef)}`,
-		`favicon: ${yaml(metadata.faviconUrl ?? "")}`,
-		`archive: ${yaml("")}`,
-		`source: ${yaml("obsidian-bookmarker")}`,
-		"---",
-		"",
-	];
+	const title = sanitizeText(metadata.title) || metadata.domain || "Bookmark";
+	const description = sanitizeText(metadata.description);
 
-	const body: string[] = [`# ${metadata.title}`, ""];
+	// stringifyYaml handles quoting/escaping; we pass plain values.
+	const frontmatter = stringifyYaml({
+		url,
+		title,
+		description,
+		created,
+		domain: metadata.domain,
+		tags: [],
+		image: imageRef,
+		favicon: metadata.faviconUrl ?? "",
+		archive: "",
+		source: "obsidian-bookmarker",
+	}).replace(/\s+$/, "");
+
+	const body: string[] = [`# ${title}`, ""];
 	if (imageRef) {
 		body.push(`![preview](${imageRef})`, "");
 	}
-	if (metadata.description) {
-		body.push(metadata.description, "");
+	if (description) {
+		body.push(description, "");
 	}
 	body.push(`[${metadata.domain}](${url})`, "");
 
-	return frontmatter.concat(body).join("\n");
+	return `---\n${frontmatter}\n---\n\n${body.join("\n")}`;
 }
 
-/** Double-quoted YAML scalar with backslash/quote escaping. */
-function yaml(value: string): string {
-	return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+/** Collapse control chars and whitespace so page text can't break note structure. */
+function sanitizeText(value: string): string {
+	let out = "";
+	for (const ch of value) {
+		const code = ch.charCodeAt(0);
+		// Replace C0 controls (incl. CR/LF/tab), DEL, and line/paragraph separators.
+		const isControl =
+			code <= 0x1f || code === 0x7f || code === 0x2028 || code === 0x2029;
+		out += isControl ? " " : ch;
+	}
+	return out.replace(/\s+/g, " ").trim();
 }
