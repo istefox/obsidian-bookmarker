@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	enableMicrolinkFallback: true,
 	enableFaviconFallback: true,
 	enableWaybackArchive: true,
-	allowNewTags: false,
+	allowNewTags: true,
 	allowNewFolders: true,
 	maxTags: 5,
 	excerptLength: 1500,

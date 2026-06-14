@@ -57,7 +57,12 @@ export class ClaudeClassifier implements Classifier {
 	}
 
 	async classifyRaw(input: BookmarkInput, taxonomy: Taxonomy): Promise<RawProposal> {
-		const system = buildSystemPrompt(taxonomy, this.settings.maxTags);
+		const system = buildSystemPrompt(
+			taxonomy,
+			this.settings.maxTags,
+			this.settings.allowNewTags,
+			this.settings.allowNewFolders,
+		);
 		const user =
 			`URL: ${input.url}\n` +
 			`Title: ${input.title}\n` +
@@ -126,15 +131,32 @@ export class HeuristicClassifier implements Classifier {
 
 // --- shared helpers -------------------------------------------------------
 
-function buildSystemPrompt(taxonomy: Taxonomy, maxTags: number): string {
+function buildSystemPrompt(
+	taxonomy: Taxonomy,
+	maxTags: number,
+	allowNewTags: boolean,
+	allowNewFolders: boolean,
+): string {
 	const tagList = taxonomy.tags.join(", ") || "(none yet)";
 	const folderList = taxonomy.folders.join(", ") || "(none yet)";
+
+	const tagRule = allowNewTags
+		? "Reuse an existing tag only when it is genuinely about the same topic. If none truly fits, propose a precise NEW tag instead of stretching a loosely related one."
+		: "Use ONLY tags from the existing list. If none is genuinely relevant, return an empty tags array. Never force a weakly related tag.";
+	const folderRule = allowNewFolders
+		? "Pick the single best existing folder. If none fits, propose a concise NEW category folder (set isNewFolder true)."
+		: "Pick the single best existing folder. If none fits, leave folder empty (it goes to the root).";
+
 	return [
 		"You are a bookmark classifier for an Obsidian vault. Given a web page's metadata,",
-		`propose (1) up to ${maxTags} tags and (2) the single best destination folder.`,
-		"Rules:",
-		"- Prefer tags and folders that ALREADY EXIST in the vault.",
-		"- Only propose a new tag/folder if nothing existing fits, and flag it.",
+		`propose (1) up to ${maxTags} topic tags and (2) the single best destination folder.`,
+		"Guidelines:",
+		"- Tags describe the page's TOPIC or SUBJECT MATTER, never the action of buying or",
+		'  visiting. For an online store page, tag the kind of product (e.g. "ebooks",',
+		'  "kindle", "books"), not "shopping" or "groceries".',
+		`- ${tagRule}`,
+		`- ${folderRule}`,
+		"- Write any new tag or folder name in the same language as the page content.",
 		"- Output STRICT minified JSON, no prose, no markdown fences:",
 		'  {"tags":[...],"folder":"...","isNewFolder":bool,"newTags":[...],"confidence":0..1}',
 		`Existing tags: ${tagList}`,
