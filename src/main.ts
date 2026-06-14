@@ -1,4 +1,4 @@
-import { Plugin } from "obsidian";
+import { Notice, Plugin } from "obsidian";
 import {
 	BookmarkerSettings,
 	BookmarkerSettingTab,
@@ -6,6 +6,7 @@ import {
 } from "./settings";
 import { CaptureModal } from "./capture-modal";
 import { captureBookmark } from "./capture";
+import { isHttpUrl } from "./url-safety";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
@@ -27,6 +28,18 @@ export default class BookmarkerPlugin extends Plugin {
 					initialUrl,
 				).open();
 			},
+		});
+
+		// One-click entry point: obsidian://bookmark?url=<encoded>
+		// Fired by the companion browser extension (desktop) or an Apple Shortcut
+		// (iOS/iPad Share Sheet). See ADR-001.
+		this.registerObsidianProtocolHandler("bookmark", (params) => {
+			const url = (params.url ?? "").trim();
+			if (!isHttpUrl(url)) {
+				new Notice("Bookmarker: obsidian://bookmark needs a valid http(s) url.");
+				return;
+			}
+			void captureBookmark(this, url);
 		});
 
 		this.addSettingTab(new BookmarkerSettingTab(this.app, this));

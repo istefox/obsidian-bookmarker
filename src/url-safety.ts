@@ -11,6 +11,16 @@
  * requestUrl does not expose the resolved address. Treat this as defense in
  * depth, not a complete SSRF defense.
  */
+/** True if the value is a syntactically valid http(s) URL (scheme check only). */
+export function isHttpUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
 export function isSafeRemoteUrl(value: string): boolean {
 	let url: URL;
 	try {
