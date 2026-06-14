@@ -122,6 +122,29 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 					}),
 			);
 
+		new Setting(containerEl).setName("Preview").setHeading();
+
+		new Setting(containerEl)
+			.setName("Preview card plugin")
+			.setDesc(
+				"Image previews render as cards via the obsidian-link-embed community " +
+					"plugin. Install it to see the card; without it the note shows the raw " +
+					"embed block plus a fallback link.",
+			)
+			.addButton((button) =>
+				button
+					.setButtonText("Install link-embed")
+					.setCta()
+					.onClick(() => {
+						window.open("obsidian://show-plugin?id=obsidian-link-embed");
+					}),
+			)
+			.addButton((button) =>
+				button.setButtonText("GitHub").onClick(() => {
+					window.open("https://github.com/Seraphli/obsidian-link-embed");
+				}),
+			);
+
 		new Setting(containerEl).setName("Free service layers").setHeading();
 
 		new Setting(containerEl)
