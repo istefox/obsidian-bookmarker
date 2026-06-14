@@ -2,6 +2,9 @@
 main.js
 *.js.map
 
+# Extension upload package (built on demand for the Chrome Web Store)
+bookmarker-extension.zip
+
 # Dependencies
 node_modules/
 

@@ -64,13 +64,9 @@ This is where most first submissions get held up. Fill every field.
 - **Single purpose:** Save the current browser tab to an Obsidian vault by handing its URL to the Bookmarker Obsidian plugin.
 - **`activeTab` justification:** The extension reads the active tab's URL only when the user clicks the toolbar button, to pass it to Obsidian. It uses no host permissions and accesses no other tabs.
 - **Data usage:** the extension collects nothing. Check every "I do not sell or transfer…" and "I do not use or transfer for purposes unrelated…" box, then certify compliance.
-- **Privacy policy URL:** Chrome requires one even when you collect no data. Host the `PRIVACY.md` text (below) somewhere public and paste its URL. A GitHub raw link to a `PRIVACY.md` in the repo works, or a GitHub Pages page.
+- **Privacy policy URL:** Chrome requires one even when you collect no data. The policy lives in `extension/PRIVACY.md`. Once it is on `main`, paste this URL into the form:
 
-### Privacy policy text (host this, then link it)
-
-Bookmarker for Obsidian does not collect, store, sell, or transfer any personal data. The extension requests the `activeTab` permission and reads the active tab's URL only at the moment you click its toolbar button, solely to pass that URL to the Obsidian Bookmarker plugin via the `obsidian://bookmark` link. No data is sent to any server operated by the developer. No analytics, no tracking, no cookies.
-
-Contact: stefano@stefer.it
+  `https://github.com/istefox/obsidian-bookmarker/blob/main/extension/PRIVACY.md`
 
 ## Step 4: Submit and wait
 
