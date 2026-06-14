@@ -7,6 +7,7 @@ import { isSafeRemoteUrl } from "./url-safety";
 import { classifyBookmark } from "./classifier";
 import { readTaxonomy } from "./taxonomy";
 import { ReviewModal } from "./review-modal";
+import { countSameDomain, findDuplicate } from "./duplicates";
 import { BookmarkDraft, Taxonomy } from "./types";
 
 /**
@@ -19,6 +20,17 @@ export async function captureBookmark(
 	url: string,
 ): Promise<void> {
 	const { app, settings } = plugin;
+
+	const duplicate = settings.warnOnDuplicate
+		? findDuplicate(app, settings.rootFolder, url)
+		: null;
+	// Identical URL: never duplicate — open the existing note and stop.
+	if (duplicate?.exact) {
+		new Notice(`Already bookmarked: ${duplicate.file.basename}`);
+		await app.workspace.getLeaf(false).openFile(duplicate.file);
+		return;
+	}
+
 	const progress = new Notice(`Bookmarking ${url}…`, 0);
 	try {
 		const html = await fetchHtml(url);
@@ -56,9 +68,24 @@ export async function captureBookmark(
 
 		progress.hide();
 
-		const finalDraft = settings.alwaysReview
-			? await reviewDraft(plugin, draft, taxonomy, classification.confidence, candidates)
-			: draft;
+		const domainCount = settings.warnOnSameDomain
+			? countSameDomain(app, settings.rootFolder, metadata.domain)
+			: 0;
+
+		// A normalized-only duplicate forces the review window so the user can decide,
+		// even when "Always review" is off.
+		const finalDraft =
+			settings.alwaysReview || duplicate
+				? await reviewDraft(
+						plugin,
+						draft,
+						taxonomy,
+						classification.confidence,
+						candidates,
+						duplicate?.file ?? null,
+						domainCount,
+					)
+				: draft;
 		if (!finalDraft) return; // cancelled in the review modal
 
 		const notePath = await writeBookmarkNote(app, settings, finalDraft);
@@ -81,6 +108,8 @@ function reviewDraft(
 	taxonomy: Taxonomy,
 	confidence: number,
 	imageCandidates: string[],
+	duplicate: TFile | null,
+	domainCount: number,
 ): Promise<BookmarkDraft | null> {
 	return new Promise((resolve) => {
 		new ReviewModal(
@@ -91,6 +120,10 @@ function reviewDraft(
 				confidence,
 				allowNewFolders: plugin.settings.allowNewFolders,
 				imageCandidates,
+				duplicatePath: duplicate?.path,
+				domain: draft.domain,
+				domainCount,
+				onOpenDomain: () => void plugin.openBoard(draft.domain),
 			},
 			resolve,
 		).open();

@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from "obsidian";
+import { App, Modal, Setting, TFile } from "obsidian";
 import { BookmarkDraft, Taxonomy } from "./types";
 import { isSafeRemoteUrl } from "./url-safety";
 
@@ -9,6 +9,13 @@ export interface ReviewInput {
 	allowNewFolders: boolean;
 	/** Preview-image candidates to choose from (first is the default). */
 	imageCandidates: string[];
+	/** Path of an existing bookmark with the same URL, if any. */
+	duplicatePath?: string;
+	/** The page's domain, and how many existing bookmarks share it. */
+	domain?: string;
+	domainCount?: number;
+	/** Open the board filtered to this domain. */
+	onOpenDomain?: () => void;
 }
 
 /**
@@ -41,6 +48,31 @@ export class ReviewModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.createEl("h2", { text: "Review bookmark" });
+
+		if (this.input.duplicatePath) {
+			const name = this.input.duplicatePath.split("/").pop() ?? this.input.duplicatePath;
+			contentEl.createEl("p", {
+				cls: "bookmarker-setting-warning",
+				text: `This page may be a duplicate — a bookmark with a similar URL already exists ("${name}").`,
+			});
+		}
+
+		// Soft same-domain notice (only when this isn't a same-page duplicate).
+		const count = this.input.domainCount ?? 0;
+		if (!this.input.duplicatePath && count > 0 && this.input.domain) {
+			const notice = contentEl.createDiv({ cls: "bookmarker-domain-notice" });
+			notice.createSpan({
+				text: `You already have ${count} bookmark${count === 1 ? "" : "s"} from ${this.input.domain}. `,
+			});
+			const link = notice.createEl("a", {
+				cls: "bookmarker-domain-link",
+				text: "Show them",
+			});
+			link.addEventListener("click", () => {
+				this.input.onOpenDomain?.();
+				this.close();
+			});
+		}
 
 		this.previewEl = contentEl.createDiv();
 		this.renderPreview();
@@ -136,16 +168,36 @@ export class ReviewModal extends Modal {
 
 		this.errorEl = contentEl.createEl("p", { cls: "bookmarker-modal-error" });
 
-		new Setting(contentEl)
-			.addButton((button) =>
-				button
-					.setButtonText("Save")
-					.setCta()
-					.onClick(() => this.save()),
-			)
+		const isDuplicate = !!this.input.duplicatePath;
+		let armed = false;
+		const actions = new Setting(contentEl)
+			.addButton((button) => {
+				button.setButtonText("Save").setCta();
+				button.onClick(() => {
+					// On a possible duplicate, require a second confirming click.
+					if (isDuplicate && !armed) {
+						armed = true;
+						button.setButtonText("Confirm duplicate save").setWarning();
+						return;
+					}
+					this.save();
+				});
+			})
 			.addButton((button) =>
 				button.setButtonText("Cancel").onClick(() => this.close()),
 			);
+		if (isDuplicate) {
+			actions.addButton((button) =>
+				button.setButtonText("Open similar bookmark").onClick(() => {
+					const path = this.input.duplicatePath as string;
+					const file = this.app.vault.getAbstractFileByPath(path);
+					this.close();
+					if (file instanceof TFile) {
+						void this.app.workspace.getLeaf(false).openFile(file);
+					}
+				}),
+			);
+		}
 	}
 
 	onClose(): void {

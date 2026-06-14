@@ -49,12 +49,12 @@ export default class BookmarkerPlugin extends Plugin {
 			(leaf) => new BookmarkView(leaf, this),
 		);
 		this.addRibbonIcon("bookmark", "Open bookmarks board", () => {
-			void this.activateView();
+			void this.openBoard();
 		});
 		this.addCommand({
 			id: "open-bookmarks-board",
 			name: "Open bookmarks board",
-			callback: () => void this.activateView(),
+			callback: () => void this.openBoard(),
 		});
 
 		this.addSettingTab(new BookmarkerSettingTab(this.app, this));
@@ -62,8 +62,8 @@ export default class BookmarkerPlugin extends Plugin {
 
 	onunload(): void {}
 
-	/** Reveal the bookmarks board, creating its leaf if needed. */
-	private async activateView(): Promise<void> {
+	/** Reveal the bookmarks board, creating its leaf if needed; optionally filter by domain. */
+	async openBoard(domain?: string): Promise<void> {
 		const { workspace } = this.app;
 		let leaf = workspace.getLeavesOfType(BOOKMARK_VIEW_TYPE)[0];
 		if (!leaf) {
@@ -71,6 +71,9 @@ export default class BookmarkerPlugin extends Plugin {
 			await leaf.setViewState({ type: BOOKMARK_VIEW_TYPE, active: true });
 		}
 		await workspace.revealLeaf(leaf);
+		if (domain && leaf.view instanceof BookmarkView) {
+			leaf.view.filterByDomain(domain);
+		}
 	}
 
 	async loadSettings(): Promise<void> {

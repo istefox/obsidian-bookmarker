@@ -13,6 +13,8 @@ export interface BookmarkerSettings {
 	enableWaybackArchive: boolean;
 	allowNewTags: boolean;
 	allowNewFolders: boolean;
+	warnOnDuplicate: boolean;
+	warnOnSameDomain: boolean;
 	maxTags: number;
 	excerptLength: number;
 }
@@ -29,6 +31,8 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	enableWaybackArchive: true,
 	allowNewTags: true,
 	allowNewFolders: true,
+	warnOnDuplicate: true,
+	warnOnSameDomain: true,
 	maxTags: 5,
 	excerptLength: 1500,
 };
@@ -225,6 +229,36 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.allowNewFolders)
 					.onChange(async (value) => {
 						this.plugin.settings.allowNewFolders = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Warn on duplicate URL")
+			.setDesc(
+				"Before saving, check if the URL is already bookmarked. In the review " +
+					"window you can open the existing note or save anyway.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.warnOnDuplicate)
+					.onChange(async (value) => {
+						this.plugin.settings.warnOnDuplicate = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Notice on same domain")
+			.setDesc(
+				"Show a discreet notice when you already have bookmarks from the same site " +
+					"(different page). No confirmation, just a heads-up with a link to see them.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.warnOnSameDomain)
+					.onChange(async (value) => {
+						this.plugin.settings.warnOnSameDomain = value;
 						await this.plugin.saveSettings();
 					}),
 			);

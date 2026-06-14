@@ -23,6 +23,7 @@ export class BookmarkView extends ItemView {
 	private search = "";
 	private folderFilter = "";
 	private tagFilter = "";
+	private domainFilter = "";
 	private gridEl!: HTMLElement;
 	private countEl!: HTMLElement;
 
@@ -49,6 +50,12 @@ export class BookmarkView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.contentEl.empty();
+	}
+
+	/** Filter the board to a single domain (www-insensitive) and redraw. */
+	filterByDomain(domain: string): void {
+		this.domainFilter = domain.toLowerCase().replace(/^www\./, "");
+		this.rebuild();
 	}
 
 	/** Full rebuild: re-scan the vault and redraw toolbar + grid. */
@@ -87,6 +94,17 @@ export class BookmarkView extends ItemView {
 
 	private renderToolbar(): void {
 		const toolbar = this.contentEl.createDiv({ cls: "bookmarker-toolbar" });
+
+		if (this.domainFilter) {
+			const chip = toolbar.createSpan({
+				cls: "bookmarker-tag-chip bookmarker-tag-active",
+				text: `${this.domainFilter} ✕`,
+			});
+			chip.addEventListener("click", () => {
+				this.domainFilter = "";
+				this.rebuild();
+			});
+		}
 
 		const searchInput = toolbar.createEl("input", {
 			cls: "bookmarker-search",
@@ -152,6 +170,12 @@ export class BookmarkView extends ItemView {
 
 	private filtered(): BookmarkItem[] {
 		return this.items.filter((item) => {
+			if (
+				this.domainFilter &&
+				item.domain.toLowerCase().replace(/^www\./, "") !== this.domainFilter
+			) {
+				return false;
+			}
 			if (this.folderFilter && item.folder !== this.folderFilter) return false;
 			if (this.tagFilter && !item.tags.includes(this.tagFilter)) return false;
 			if (this.search) {
