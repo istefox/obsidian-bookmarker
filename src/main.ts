@@ -7,6 +7,7 @@ import {
 import { CaptureModal } from "./capture-modal";
 import { captureBookmark } from "./capture";
 import { isHttpUrl } from "./url-safety";
+import { BOOKMARK_VIEW_TYPE, BookmarkView } from "./bookmark-view";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
@@ -42,10 +43,35 @@ export default class BookmarkerPlugin extends Plugin {
 			void captureBookmark(this, url);
 		});
 
+		// Raindrop-like board: a grid of cover cards for the saved bookmarks.
+		this.registerView(
+			BOOKMARK_VIEW_TYPE,
+			(leaf) => new BookmarkView(leaf, this),
+		);
+		this.addRibbonIcon("bookmark", "Open bookmarks board", () => {
+			void this.activateView();
+		});
+		this.addCommand({
+			id: "open-bookmarks-board",
+			name: "Open bookmarks board",
+			callback: () => void this.activateView(),
+		});
+
 		this.addSettingTab(new BookmarkerSettingTab(this.app, this));
 	}
 
 	onunload(): void {}
+
+	/** Reveal the bookmarks board, creating its leaf if needed. */
+	private async activateView(): Promise<void> {
+		const { workspace } = this.app;
+		let leaf = workspace.getLeavesOfType(BOOKMARK_VIEW_TYPE)[0];
+		if (!leaf) {
+			leaf = workspace.getLeaf("tab");
+			await leaf.setViewState({ type: BOOKMARK_VIEW_TYPE, active: true });
+		}
+		await workspace.revealLeaf(leaf);
+	}
 
 	async loadSettings(): Promise<void> {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());

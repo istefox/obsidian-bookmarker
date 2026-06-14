@@ -102,3 +102,105 @@
 .bookmarker-cover-selected {
 	border-color: var(--interactive-accent);
 }
+
+/* --- Bookmarks board (grid view) --- */
+.bookmarker-board {
+	padding: var(--size-4-3);
+	overflow-y: auto;
+}
+
+.bookmarker-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-2-3);
+	margin-bottom: var(--size-4-2);
+}
+
+.bookmarker-search {
+	flex: 1 1 180px;
+}
+
+.bookmarker-count {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin-left: auto;
+}
+
+.bookmarker-tag-filter {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	margin-bottom: var(--size-4-3);
+}
+
+.bookmarker-tag-active {
+	outline: 2px solid var(--interactive-accent);
+}
+
+.bookmarker-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: var(--size-4-3);
+}
+
+.bookmarker-card {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	overflow: hidden;
+	cursor: pointer;
+	background: var(--background-secondary);
+	transition: border-color 0.1s ease;
+}
+
+.bookmarker-card:hover {
+	border-color: var(--interactive-accent);
+}
+
+.bookmarker-card-cover {
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background: var(--background-primary);
+}
+
+.bookmarker-card-cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.bookmarker-card-cover-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.bookmarker-card-title {
+	font-weight: var(--font-semibold);
+	padding: var(--size-4-2) var(--size-4-2) 0;
+	line-height: 1.3;
+}
+
+.bookmarker-card-domain {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	padding: var(--size-2-1) var(--size-4-2) 0;
+}
+
+.bookmarker-card-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+	padding: var(--size-2-2) var(--size-4-2) var(--size-4-2);
+}
+
+.bookmarker-empty {
+	color: var(--text-muted);
+	padding: var(--size-4-4);
+	text-align: center;
+}

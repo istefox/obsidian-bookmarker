@@ -1,13 +1,17 @@
 ## Status (2026-06-14)
 **Branch:** feat/m2-capture-pipeline (off main; remote main = github.com/istefox/obsidian-bookmarker, public)
-**Last commit:** a374e1e — feat(extension): one-click capture browser extension
-**In progress:** M3 (classifier + review modal + link-embed image) — code complete, reviewed, committing.
-**Done:** M1/M2/M2.5 + hardening; EX1 extension (extension/, committed a374e1e, one-click verified).
-M3: src/classifier.ts (Claude + heuristic fallback), src/taxonomy.ts (vault tags + subfolders),
-src/review-modal.ts (edit title/tags/folder), note-writer now writes an obsidian-link-embed ```embed
-card by external URL (no _assets/no local files), settings gain alwaysReview, drop assetSubfolder.
-**Next:** M4 — Microlink/favicon/Wayback fallbacks; consider duplicate-URL detection.
-**Open decisions:** confirm plugin id + minAppVersion (brief §14).
-**Notes:** card preview needs the obsidian-link-embed community plugin installed; without it the note
-shows the raw ```embed block + a fallback [domain](url) link. Type-check/build green; M3 reviewer pass
-applied (heuristic-confidence fix, Claude-fallback Notice, normalizePath, SSRF guard on modal img).
+**Last commit:** 51f838e — feat(preview): candidate extraction, Microlink screenshot, cover picker (NOT pushed yet)
+**Done:** M1/M2/M2.5 + hardening; EX1 extension; M3 (classifier + review modal + link-embed card);
+prompt tuning; Note name field; preview images (extraction chain → Microlink synchronous screenshot
+→ wsrv.nl proxy → cover picker in modal with candidate thumbnails + None + custom Cover URL).
+Verified in TEST: Amazon now shows a real Microlink screenshot, proxied via wsrv.nl.
+**Direction:** make it Raindrop-like. ADR-001 = thin extension + obsidian://bookmark, no backend.
+**Roadmap (user-approved, queued):** 1) grid/cover dashboard view (ItemView with cover cards + filters
+by tag/folder/domain/type) — the big "Raindrop feeling" item; 2) duplicate-URL detection (normalize URL,
+warn if already saved); 3) type detection (article/video/image/doc) + favorites flag; 4) broken-link
+checker (on-demand command) + import from Pocket/Raindrop HTML/CSV.
+**Out of scope (needs backend):** full-text content search, web archive, AI search, collaboration/public/RSS.
+**Open decisions:** confirm plugin id `obsidian-bookmarker` + minAppVersion 1.5.0 (brief §14).
+**Notes:** card preview needs obsidian-link-embed installed (Settings → Preview has install button).
+Settings: useImageProxy + enableScreenshotFallback (both default ON, new keys). Reload plugin after each
+build copy into TEST. /humanize-en required on all commit messages (public repo).
