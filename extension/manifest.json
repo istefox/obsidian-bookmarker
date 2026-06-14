@@ -4,7 +4,19 @@
 	"version": "0.1.0",
 	"description": "One-click: save the current page to your Obsidian vault via the Bookmarker plugin.",
 	"action": {
-		"default_title": "Bookmark this page in Obsidian"
+		"default_title": "Bookmark this page in Obsidian",
+		"default_icon": {
+			"16": "icons/icon-16.png",
+			"32": "icons/icon-32.png",
+			"48": "icons/icon-48.png",
+			"128": "icons/icon-128.png"
+		}
+	},
+	"icons": {
+		"16": "icons/icon-16.png",
+		"32": "icons/icon-32.png",
+		"48": "icons/icon-48.png",
+		"128": "icons/icon-128.png"
 	},
 	"background": {
 		"service_worker": "background.js"
