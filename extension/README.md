@@ -53,6 +53,19 @@ Chromium version blanks the tab or shows an error page instead, switch the liste
    `location.href = target` in the active tab (requires adding the `scripting`
    permission to `manifest.json`).
 
+## Icons
+
+Icons live in `icons/`, generated from `icons/icon.svg` with `rsvg-convert`:
+
+```bash
+cd icons
+for s in 16 32 48 128; do rsvg-convert -w $s -h $s icon.svg -o icon-$s.png; done
+```
+
+## Publishing
+
+See `SUBMISSION.md` for the Chrome Web Store submission steps (packaging, listing, privacy form).
+
 ## Not included yet
 
-Firefox build, real icons, passing selected text/title, Chrome Web Store packaging.
+Firefox build, passing selected text/title.
