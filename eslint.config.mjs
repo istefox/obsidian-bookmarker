@@ -13,10 +13,11 @@ export default [
 			},
 		},
 		rules: {
-			// The sentence-case rule lowercases proper nouns (Wayback Machine,
-			// Pocket, Raindrop, Netscape), URLs, protocol schemes (obsidian://),
-			// and key prefixes (sk-ant-). Keep it as a warning, not an error.
-			"obsidianmd/ui/sentence-case": "warn",
+			// Disabled: every report is a false positive here. The rule would
+			// lowercase proper nouns (Wayback Machine, Pocket, Raindrop, Netscape),
+			// URL/protocol examples (obsidian://, https://example.com), and key
+			// prefixes (sk-ant-). Applying its fixes degrades user-facing text.
+			"obsidianmd/ui/sentence-case": "off",
 		},
 	},
 ];

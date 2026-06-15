@@ -509,7 +509,7 @@ export class BookmarkView extends ItemView {
 		try {
 			// Recoverable: honours the user's "Deleted files" preference. The board
 			// auto-refreshes from the vault delete event.
-			await this.app.vault.trash(item.file, true);
+			await this.app.fileManager.trashFile(item.file);
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
 			new Notice(`Delete failed: ${msg}`);

@@ -99,7 +99,7 @@ async function applyDedup(
 			continue;
 		}
 		try {
-			await app.vault.trash(entry.victim.file, true);
+			await app.fileManager.trashFile(entry.victim.file);
 			merged++;
 		} catch (error) {
 			failed++;
