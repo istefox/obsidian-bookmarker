@@ -15,7 +15,8 @@ import { readTaxonomy } from "./taxonomy";
 import { classifyBookmark } from "./classifier";
 import { FolderSuggestModal } from "./folder-suggest";
 import { RegenerateTagsModal } from "./regenerate-tags-modal";
-import { ensureFolder, sanitizeFolderPath } from "./note-writer";
+import { appendNote, ensureFolder, sanitizeFolderPath } from "./note-writer";
+import { AnnotateModal } from "./annotate-modal";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
@@ -422,6 +423,12 @@ export class BookmarkView extends ItemView {
 		);
 		menu.addItem((i) =>
 			i
+				.setTitle("Add note")
+				.setIcon("pencil")
+				.onClick(() => this.addNote(item)),
+		);
+		menu.addItem((i) =>
+			i
 				.setTitle("Regenerate tags")
 				.setIcon("tags")
 				.onClick(() => void this.regenerateTags(item)),
@@ -440,6 +447,15 @@ export class BookmarkView extends ItemView {
 	private showRelated(item: BookmarkItem): void {
 		this.relatedTo = item;
 		this.rebuild();
+	}
+
+	private addNote(item: BookmarkItem): void {
+		new AnnotateModal(this.app, item.title, (text) => {
+			void appendNote(this.app, item.file, text).catch((error: unknown) => {
+				const msg = error instanceof Error ? error.message : String(error);
+				new Notice(`Add note failed: ${msg}`);
+			});
+		}).open();
 	}
 
 	private async deleteBookmark(item: BookmarkItem): Promise<void> {

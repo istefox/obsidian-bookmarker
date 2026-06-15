@@ -12,6 +12,7 @@ import { checkBrokenLinks } from "./link-check";
 import { ImportModal } from "./import-modal";
 import { fetchRaindropItems } from "./raindrop";
 import { importBookmarks } from "./import-writer";
+import { BookmarkSuggestModal, listBookmarkFiles } from "./bookmark-suggest";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
@@ -74,6 +75,20 @@ export default class BookmarkerPlugin extends Plugin {
 			id: "import-from-raindrop",
 			name: "Import from Raindrop",
 			callback: () => void this.runRaindropImport(),
+		});
+		this.addCommand({
+			id: "insert-bookmark-link",
+			name: "Insert bookmark link",
+			editorCallback: (editor) => {
+				const refs = listBookmarkFiles(this.app, this.settings);
+				if (refs.length === 0) {
+					new Notice("Bookmarker: no bookmarks yet.");
+					return;
+				}
+				new BookmarkSuggestModal(this.app, refs, (file) => {
+					editor.replaceSelection(`[[${file.basename}]]`);
+				}).open();
+			},
 		});
 
 		this.addSettingTab(new BookmarkerSettingTab(this.app, this));
