@@ -1,9 +1,9 @@
 # CLAUDE.md
 
 ## What is this project
-Obsidian Bookmarker — a custom Obsidian plugin that captures web URLs as Markdown
+Obsidian Bookmarker is a custom Obsidian plugin that captures web URLs as Markdown
 bookmarks in the vault, with og:image preview, AI-proposed tags, and AI-proposed
-destination subfolder. Personal-first, structured to be community-release-ready later.
+destination subfolder.
 
 ## Stack
 TypeScript, Obsidian Plugin API, esbuild (standard `obsidian-sample-plugin` scaffold).
@@ -23,7 +23,7 @@ image download/fallback → classify → review modal → write note into chosen
 - Free service layers, all default-on, all degrade gracefully: Microlink (image fallback),
   favicon fallback, Wayback archive snapshot.
 - Root folder `_bookmarks`; categories = subfolders; assets in `_bookmarks/_assets/`.
-- Settings via `PluginSettingTab` + `loadData`/`saveData` (see brief §8 for schema).
+- Settings via `PluginSettingTab` + `loadData`/`saveData`.
 
 ## Gotchas
 - Mobile + desktop both supported (`isDesktopOnly: false`). Every constraint below exists
@@ -33,6 +33,5 @@ image download/fallback → classify → review modal → write note into chosen
 - HTML parsing: `new DOMParser()`. No cheerio/jsdom.
 - File I/O: Obsidian vault API only (`vault.create`, `createBinary`, `createFolder`).
   No Node-only modules anywhere (`fs`, `path`, `child_process`, `electron`, `puppeteer`).
-- Never log the API key or full request bodies. Key lives plaintext in `data.json` —
-  settings UI must warn about `.obsidian` sync.
-- Source-of-truth spec: `~/Downloads/20260613_ObsidianBookmarker_Brief_v1.md` (build brief v1).
+- Never log the API key or full request bodies. Key lives plaintext in `data.json`;
+  the settings UI must warn about `.obsidian` sync.

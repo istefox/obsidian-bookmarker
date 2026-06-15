@@ -64,11 +64,13 @@ The fallback link at the bottom works even without a preview plugin installed.
 
 ## Install
 
-Bookmarker is not in the community plugin directory yet, so install it manually:
+From inside Obsidian: open Settings, go to Community plugins, Browse, search for "Bookmarker", and install. Then enable it.
 
-1. Build the plugin (`npm install && npm run build`) or grab `main.js`, `manifest.json`, and `styles.css` from a release.
-2. Copy those three files into `<your vault>/.obsidian/plugins/bookmarker/`.
-3. Enable **Bookmarker** in Obsidian's Community Plugins settings, then reload.
+To install manually instead:
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from a [release](https://github.com/istefox/obsidian-bookmarker/releases).
+2. Copy them into `<your vault>/.obsidian/plugins/bookmarker/`.
+3. Enable Bookmarker in Community plugins, then reload.
 
 ### Browser extension (desktop one-click)
 
