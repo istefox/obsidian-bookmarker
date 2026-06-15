@@ -1,4 +1,4 @@
-# Bookmarker for Obsidian — browser extension
+# Bookmarker for Obsidian (browser extension)
 
 A thin Chromium (Chrome / Edge / Brave / Arc) extension that saves the page you are
 on to your Obsidian vault with one click. It does no scraping itself: it hands the
@@ -18,7 +18,7 @@ The steps in "Install (unpacked, for development)" below load the source instead
 ## Requirements
 
 - The **Bookmarker** Obsidian plugin installed and enabled, with Obsidian running (or
-  launchable) — it registers the `obsidian://bookmark` handler.
+  launchable), since it registers the `obsidian://bookmark` handler.
 
 ## Install (unpacked, for development)
 
@@ -37,7 +37,7 @@ The steps in "Install (unpacked, for development)" below load the source instead
 
 ## Permissions
 
-- `activeTab` only — the extension reads the active tab's URL when you click, and
+- `activeTab` only. The extension reads the active tab's URL when you click, and
   nothing else. No host permissions, no background page access, no `tabs`/`scripting`.
 
 ## Contract with the plugin
@@ -53,9 +53,9 @@ current Chromium invokes the OS handler without navigating the page away. If a f
 Chromium version blanks the tab or shows an error page instead, switch the listener in
 `background.js` to one of:
 
-1. **Transient tab** — `chrome.tabs.create({ url: target })`, then
+1. **Transient tab**: `chrome.tabs.create({ url: target })`, then
    `chrome.tabs.remove(newTab.id)` on a ~600 ms timer.
-2. **Injected navigation** — `chrome.scripting.executeScript` running
+2. **Injected navigation**: `chrome.scripting.executeScript` running
    `location.href = target` in the active tab (requires adding the `scripting`
    permission to `manifest.json`).
 
