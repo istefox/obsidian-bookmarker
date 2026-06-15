@@ -17,3 +17,10 @@ data.json
 
 # Claude Code session/tooling files
 .claude/
+
+# Concept-to-code planning artifacts (local orchestration state)
+SPEC.md
+PROJECT.md
+BRAINSTORM.md
+docs/manifests/
+*.bak
