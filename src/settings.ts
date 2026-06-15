@@ -69,7 +69,7 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 			cls: "bookmarker-setting-warning",
 		});
 		warning.setText(
-			"Privacy: the API key is stored in .obsidian/plugins/obsidian-bookmarker/data.json. " +
+			"Privacy: the API key is stored in .obsidian/plugins/bookmarker/data.json. " +
 				"If you sync .obsidian, the key syncs too — exclude it from sync.",
 		);
 
