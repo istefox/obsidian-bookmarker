@@ -17,6 +17,7 @@ import { FolderSuggestModal } from "./folder-suggest";
 import { RegenerateTagsModal } from "./regenerate-tags-modal";
 import { appendNote, ensureFolder, sanitizeFolderPath } from "./note-writer";
 import { AnnotateModal } from "./annotate-modal";
+import { normalizeTags } from "./tags";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
@@ -49,6 +50,8 @@ export class BookmarkView extends ItemView {
 	private typeFilter = "";
 	private favoritesOnly = false;
 	private brokenOnly = false;
+	/** Paths of cards the user has ticked for a bulk Organize command. */
+	private readonly selected = new Set<string>();
 	private gridEl!: HTMLElement;
 	private countEl!: HTMLElement;
 
@@ -104,8 +107,11 @@ export class BookmarkView extends ItemView {
 		return path === root || path.startsWith(`${root}/`);
 	}
 
-	/** Re-scan the vault and redraw the grid, keeping the toolbar and filters. */
+	/** Re-scan the vault and redraw the grid, keeping the toolbar, filters, and selection. */
 	private refreshData(): void {
+		// Selection persists across background vault events; it is cleared only on an
+		// explicit rebuild (Refresh button, filter/domain/related change). Stale paths
+		// are harmless: getSelectedFiles() resolves against the current item set.
 		this.loadBookmarks();
 		// Leave related mode if its source bookmark was deleted.
 		const related = this.relatedTo;
@@ -127,8 +133,19 @@ export class BookmarkView extends ItemView {
 		this.rebuild();
 	}
 
+	/** Files of the cards the user has selected (resolved against the current set). */
+	getSelectedFiles(): TFile[] {
+		return this.items.filter((i) => this.selected.has(i.file.path)).map((i) => i.file);
+	}
+
+	/** Files currently visible under the active filters/search. */
+	getVisibleFiles(): TFile[] {
+		return this.filtered().map((i) => i.file);
+	}
+
 	/** Full rebuild: re-scan the vault and redraw toolbar + grid. */
 	private rebuild(): void {
+		this.selected.clear();
 		this.contentEl.empty();
 		this.contentEl.addClass("bookmarker-board");
 		this.loadBookmarks();
@@ -242,6 +259,24 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
+		const selectAll = toolbar.createEl("button", {
+			cls: "bookmarker-refresh",
+			text: "Select all",
+		});
+		selectAll.addEventListener("click", () => {
+			for (const item of this.filtered()) this.selected.add(item.file.path);
+			this.renderGrid();
+		});
+
+		const selectNone = toolbar.createEl("button", {
+			cls: "bookmarker-refresh",
+			text: "Select none",
+		});
+		selectNone.addEventListener("click", () => {
+			this.selected.clear();
+			this.renderGrid();
+		});
+
 		const refresh = toolbar.createEl("button", {
 			cls: "bookmarker-refresh",
 			text: "Refresh",
@@ -337,6 +372,18 @@ export class BookmarkView extends ItemView {
 		const card = this.gridEl.createDiv({ cls: "bookmarker-card" });
 
 		const cover = card.createDiv({ cls: "bookmarker-card-cover" });
+
+		const select = cover.createEl("input", {
+			cls: "bookmarker-card-select",
+			attr: { type: "checkbox", "aria-label": "Select bookmark" },
+		});
+		select.checked = this.selected.has(item.file.path);
+		select.addEventListener("click", (event) => event.stopPropagation());
+		select.addEventListener("change", () => {
+			if (select.checked) this.selected.add(item.file.path);
+			else this.selected.delete(item.file.path);
+		});
+
 		if (item.image && isSafeRemoteUrl(item.image)) {
 			cover.createEl("img", { attr: { src: item.image, loading: "lazy" } });
 		} else {
@@ -462,7 +509,7 @@ export class BookmarkView extends ItemView {
 		try {
 			// Recoverable: honours the user's "Deleted files" preference. The board
 			// auto-refreshes from the vault delete event.
-			await this.app.vault.trash(item.file, true);
+			await this.app.fileManager.trashFile(item.file);
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
 			new Notice(`Delete failed: ${msg}`);
@@ -535,15 +582,6 @@ function asString(value: unknown): string {
 /** The text a fuzzy search runs against for one bookmark. */
 function haystack(item: BookmarkItem): string {
 	return `${item.title} ${item.domain} ${item.url} ${item.tags.join(" ")} ${item.description}`;
-}
-
-function normalizeTags(value: unknown): string[] {
-	const parts = Array.isArray(value)
-		? value
-		: typeof value === "string"
-			? value.split(/[\s,]+/)
-			: [];
-	return parts.map((t) => String(t).replace(/^#/, "").trim()).filter(Boolean);
 }
 
 function unique(values: string[]): string[] {
