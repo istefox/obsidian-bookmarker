@@ -1,4 +1,4 @@
-import { App, normalizePath, stringifyYaml, TFolder } from "obsidian";
+import { App, normalizePath, stringifyYaml, TFile, TFolder } from "obsidian";
 import { BookmarkerSettings } from "./settings";
 import { BookmarkDraft } from "./types";
 import { isSafeRemoteUrl } from "./url-safety";
@@ -132,4 +132,32 @@ function sanitizeText(value: string): string {
 		out += isControl ? " " : ch;
 	}
 	return out.replace(/\s+/g, " ").trim();
+}
+
+/** Append a dated bullet under a "## Notes" section in a bookmark's body. */
+export async function appendNote(app: App, file: TFile, text: string): Promise<void> {
+	const clean = text.replace(/\s+/g, " ").trim();
+	if (!clean) return;
+	const date = new Date().toISOString().slice(0, 10);
+	const line = `- [${date}] ${clean}`;
+	await app.vault.process(file, (data) => {
+		const lines = data.split("\n");
+		const notesIdx = lines.findIndex((l) => /^##\s+Notes\s*$/.test(l));
+		if (notesIdx === -1) {
+			while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+			lines.push("", "## Notes", line);
+			return lines.join("\n") + "\n";
+		}
+		// Insert before the next heading after "## Notes", or at the section's end.
+		let insertAt = lines.length;
+		for (let i = notesIdx + 1; i < lines.length; i++) {
+			if (/^#{1,6}\s/.test(lines[i])) {
+				insertAt = i;
+				break;
+			}
+		}
+		while (insertAt > notesIdx + 1 && lines[insertAt - 1].trim() === "") insertAt--;
+		lines.splice(insertAt, 0, line);
+		return lines.join("\n");
+	});
 }
