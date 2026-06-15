@@ -1,7 +1,7 @@
 name: Release
 
 # Builds the plugin and publishes a GitHub release with signed build
-# provenance whenever a semver tag (e.g. 0.1.4) is pushed.
+# provenance whenever a semver tag (e.g. 0.1.5) is pushed.
 
 on:
   push:
@@ -13,6 +13,10 @@ permissions:
   id-token: write
   attestations: write
 
+env:
+  # Run the bundled JS actions on Node 24; Node 20 is being removed from the runners.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
