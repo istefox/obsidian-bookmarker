@@ -58,7 +58,7 @@ The fallback link at the bottom works even without a preview plugin installed.
 
 ## Requirements
 
-- Obsidian 1.5.0 or newer, desktop or mobile.
+- Obsidian 1.7.2 or newer, desktop or mobile.
 - An Anthropic API key for the Claude classifier. This is optional: the heuristic mode classifies offline with no key.
 - The [obsidian-link-embed](https://github.com/Seraphli/obsidian-link-embed) community plugin to render preview cards. Without it the note still saves, showing the raw embed block and the fallback link. The plugin settings include an install button for it.
 
