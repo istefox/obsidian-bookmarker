@@ -17,6 +17,7 @@ import { FolderSuggestModal } from "./folder-suggest";
 import { RegenerateTagsModal } from "./regenerate-tags-modal";
 import { appendNote, ensureFolder, sanitizeFolderPath } from "./note-writer";
 import { AnnotateModal } from "./annotate-modal";
+import { normalizeTags } from "./tags";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
@@ -581,15 +582,6 @@ function asString(value: unknown): string {
 /** The text a fuzzy search runs against for one bookmark. */
 function haystack(item: BookmarkItem): string {
 	return `${item.title} ${item.domain} ${item.url} ${item.tags.join(" ")} ${item.description}`;
-}
-
-function normalizeTags(value: unknown): string[] {
-	const parts = Array.isArray(value)
-		? value
-		: typeof value === "string"
-			? value.split(/[\s,]+/)
-			: [];
-	return parts.map((t) => String(t).replace(/^#/, "").trim()).filter(Boolean);
 }
 
 function unique(values: string[]): string[] {

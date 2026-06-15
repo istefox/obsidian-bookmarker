@@ -3,6 +3,7 @@ import type BookmarkerPlugin from "./main";
 import { normalizeUrl } from "./duplicates";
 import { OrganizeModal, OrganizeRow, OrganizeSelection } from "./organize-modal";
 import { bookmarkNoteFiles } from "./organize-scan";
+import { normalizeTags } from "./tags";
 
 interface DedupNote {
 	file: TFile;
@@ -174,13 +175,4 @@ async function appendNotesBullets(app: App, keeper: TFile, bullets: string[]): P
 		lines.splice(insertAt, 0, ...bullets);
 		return lines.join("\n");
 	});
-}
-
-function normalizeTags(value: unknown): string[] {
-	const parts = Array.isArray(value)
-		? value
-		: typeof value === "string"
-			? value.split(/[\s,]+/)
-			: [];
-	return parts.map((t) => String(t).replace(/^#/, "").trim()).filter(Boolean);
 }

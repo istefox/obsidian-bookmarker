@@ -5,6 +5,7 @@ import { fetchWaybackSnapshot } from "./archive";
 import { ensureFolder, sanitizeFileName } from "./note-writer";
 import { OrganizeModal, OrganizeRow, OrganizeSelection } from "./organize-modal";
 import { bookmarkNoteFiles, frontmatterUrl } from "./organize-scan";
+import { addTag } from "./tags";
 
 interface BrokenEntry {
 	file: TFile;
@@ -156,14 +157,4 @@ async function moveToBrokenFolder(
 function title(app: App, file: TFile): string {
 	const fm = app.metadataCache.getFileCache(file)?.frontmatter;
 	return fm && typeof fm.title === "string" && fm.title ? fm.title : file.basename;
-}
-
-function addTag(value: unknown, tag: string): string[] {
-	const tags = Array.isArray(value)
-		? value.map((t) => String(t).replace(/^#/, "").trim()).filter(Boolean)
-		: typeof value === "string"
-			? value.split(/[\s,]+/).map((t) => t.replace(/^#/, "").trim()).filter(Boolean)
-			: [];
-	if (!tags.some((t) => t.toLowerCase() === tag.toLowerCase())) tags.push(tag);
-	return tags;
 }

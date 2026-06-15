@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { withTimeout } from "./timeout";
 
 const TIMEOUT_MS = 10000;
 
@@ -15,29 +16,24 @@ export async function fetchWaybackSnapshot(url: string): Promise<string | null> 
 			TIMEOUT_MS,
 		);
 		if (response.status !== 200) return null;
-		const snapshot = response.json?.archived_snapshots?.closest;
-		if (snapshot?.available === true && typeof snapshot.url === "string") {
-			// The API may return a protocol-relative or http URL; normalize to https.
-			return snapshot.url.replace(/^http:\/\//i, "https://");
-		}
-		return null;
+		return closestSnapshotUrl(response.json as unknown);
 	} catch {
 		return null;
 	}
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-	return new Promise<T>((resolve, reject) => {
-		const timer = window.setTimeout(() => reject(new Error("timeout")), ms);
-		promise.then(
-			(value) => {
-				window.clearTimeout(timer);
-				resolve(value);
-			},
-			(error) => {
-				window.clearTimeout(timer);
-				reject(error instanceof Error ? error : new Error(String(error)));
-			},
-		);
-	});
+/** Safely walk the availability-API response: `archived_snapshots.closest.url`. */
+function closestSnapshotUrl(json: unknown): string | null {
+	const snapshots = asRecord(json)?.archived_snapshots;
+	const closest = asRecord(snapshots)?.closest;
+	const record = asRecord(closest);
+	if (record?.available === true && typeof record.url === "string") {
+		// The API may return a protocol-relative or http URL; normalize to https.
+		return record.url.replace(/^http:\/\//i, "https://");
+	}
+	return null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }

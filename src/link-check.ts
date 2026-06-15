@@ -1,5 +1,7 @@
-import { App, normalizePath, requestUrl, TFile } from "obsidian";
+import { App, requestUrl } from "obsidian";
 import { BookmarkerSettings } from "./settings";
+import { bookmarkNoteFiles } from "./organize-scan";
+import { withTimeout } from "./timeout";
 
 const TIMEOUT_MS = 10000;
 
@@ -18,7 +20,7 @@ export async function checkBrokenLinks(
 	settings: BookmarkerSettings,
 	onProgress: (done: number, total: number) => void,
 ): Promise<BrokenResult> {
-	const files = bookmarkFiles(app, settings.rootFolder);
+	const files = bookmarkNoteFiles(app, settings);
 	let checked = 0;
 	let broken = 0;
 	for (let i = 0; i < files.length; i++) {
@@ -44,18 +46,6 @@ export async function checkBrokenLinks(
 	return { checked, broken };
 }
 
-function bookmarkFiles(app: App, rootFolder: string): TFile[] {
-	const root = normalizePath(rootFolder);
-	const prefix = `${root}/`;
-	const out: TFile[] = [];
-	for (const file of app.vault.getMarkdownFiles()) {
-		if (file.path !== root && !file.path.startsWith(prefix)) continue;
-		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-		if (fm?.source === "obsidian-bookmarker") out.push(file);
-	}
-	return out;
-}
-
 /**
  * Conservative liveness test: only a 404/410 or a network failure/timeout counts as
  * broken. 403/429/5xx (anti-bot, rate limiting) are NOT treated as broken.
@@ -73,18 +63,3 @@ export async function isUrlBroken(url: string): Promise<boolean> {
 	}
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-	return new Promise<T>((resolve, reject) => {
-		const timer = window.setTimeout(() => reject(new Error("timeout")), ms);
-		promise.then(
-			(value) => {
-				window.clearTimeout(timer);
-				resolve(value);
-			},
-			(error) => {
-				window.clearTimeout(timer);
-				reject(error instanceof Error ? error : new Error(String(error)));
-			},
-		);
-	});
-}

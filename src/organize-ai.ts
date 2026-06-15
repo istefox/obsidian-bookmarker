@@ -7,6 +7,7 @@ import { BOOKMARK_VIEW_TYPE, BookmarkView } from "./bookmark-view";
 import { ClassificationResult } from "./types";
 import { OrganizeModal, OrganizeRow, OrganizeSelection } from "./organize-modal";
 import { bookmarkNoteFiles } from "./organize-scan";
+import { normalizeTags } from "./tags";
 
 interface Candidate {
 	file: TFile;
@@ -217,13 +218,4 @@ async function applyMoves(
 
 function asString(value: unknown): string {
 	return typeof value === "string" ? value : "";
-}
-
-function normalizeTags(value: unknown): string[] {
-	const parts = Array.isArray(value)
-		? value
-		: typeof value === "string"
-			? value.split(/[\s,]+/)
-			: [];
-	return parts.map((t) => String(t).replace(/^#/, "").trim()).filter(Boolean);
 }
