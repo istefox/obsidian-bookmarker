@@ -24,3 +24,4 @@ PROJECT.md
 BRAINSTORM.md
 docs/manifests/
 *.bak
+.claude/.triage-fix-last-feat_organize-tidying.json

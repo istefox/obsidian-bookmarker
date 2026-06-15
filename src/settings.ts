@@ -20,6 +20,9 @@ export interface BookmarkerSettings {
 	warnOnSameDomain: boolean;
 	maxTags: number;
 	excerptLength: number;
+	organizeBatchCap: number;
+	brokenFolderName: string;
+	brokenDefaultRemediation: "wayback" | "move" | "mark";
 }
 
 export const DEFAULT_SETTINGS: BookmarkerSettings = {
@@ -39,6 +42,9 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	warnOnSameDomain: true,
 	maxTags: 5,
 	excerptLength: 1500,
+	organizeBatchCap: 50,
+	brokenFolderName: "_broken",
+	brokenDefaultRemediation: "mark",
 };
 
 export class BookmarkerSettingTab extends PluginSettingTab {
@@ -310,6 +316,58 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 							this.plugin.settings.excerptLength = Math.floor(parsed);
 							await this.plugin.saveSettings();
 						}
+					}),
+			);
+
+		new Setting(containerEl).setName("Organize").setHeading();
+
+		new Setting(containerEl)
+			.setName("Batch cap")
+			.setDesc(
+				"Maximum bookmarks processed per run of the AI organize commands " +
+					"(bulk re-tag, suggest folder moves). Bounds API cost; re-run to continue.",
+			)
+			.addText((text) =>
+				text
+					.setValue(String(this.plugin.settings.organizeBatchCap))
+					.onChange(async (value) => {
+						const parsed = Number(value);
+						if (Number.isFinite(parsed) && parsed > 0) {
+							this.plugin.settings.organizeBatchCap = Math.floor(parsed);
+							await this.plugin.saveSettings();
+						}
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Broken-link folder")
+			.setDesc(
+				"Subfolder under the root where 'move' remediation relocates dead-link notes.",
+			)
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.brokenFolderName)
+					.onChange(async (value) => {
+						this.plugin.settings.brokenFolderName = value.trim() || "_broken";
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Default broken-link remediation")
+			.setDesc(
+				"Preselected action for each dead link in the cleanup review window.",
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption("mark", "Mark (frontmatter + #broken tag)")
+					.addOption("move", "Move to broken-link folder")
+					.addOption("wayback", "Swap in Wayback snapshot")
+					.setValue(this.plugin.settings.brokenDefaultRemediation)
+					.onChange(async (value) => {
+						this.plugin.settings.brokenDefaultRemediation =
+							value as "wayback" | "move" | "mark";
+						await this.plugin.saveSettings();
 					}),
 			);
 

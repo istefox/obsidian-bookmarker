@@ -14,6 +14,7 @@ The goal is a Raindrop-style bookmarking experience that lives entirely in plain
 - **Duplicate awareness.** Before saving it checks whether the URL is already bookmarked: an exact match is blocked, a same-page-different-tracking match is flagged, and other pages from the same domain raise a quiet notice with a link to them.
 - **Type detection and favorites.** Each bookmark is tagged as an article, video, image, document, audio, or link, and can be starred.
 - **Broken-link checker.** An on-demand command tests every saved URL and flags dead ones in frontmatter. It is deliberately conservative: only a 404/410 or a network failure counts as broken, so anti-bot 403/429 and 5xx responses are left alone.
+- **Organize.** Bulk tidying for a collection that has grown messy: deduplicate notes that point to the same URL, re-tag in batches, move misfiled bookmarks to a better folder, and remediate dead links by archiving, moving, or marking them. Every operation previews its changes and applies only what you approve.
 - **Import.** Pull your whole Raindrop library straight from the Raindrop API, covers and collections included, with a token set in settings. You can also bring in a Pocket, Raindrop, or browser HTML export, or a Raindrop CSV.
 
 Several helpers degrade gracefully and stay out of the way: a favicon fallback service, an optional Wayback Machine snapshot, and the image proxy can each be turned off.
@@ -90,11 +91,22 @@ No extension is needed. Make an Apple Shortcut on the Share Sheet that opens `ob
 - **Import bookmarks…**: command that opens the import window for an HTML or CSV file.
 - **Import from Raindrop**: command that pulls every bookmark from your Raindrop account through the API, with covers and collections. Set the token in settings first.
 
+### Organize
+
+Four commands tidy a collection that has grown messy. Each one scans, shows a review window where every proposed change has a checkbox, and applies only what you keep checked.
+
+- **Deduplicate bookmarks**: groups notes that point to the same URL (ignoring trackers, `www.`, and trailing slashes), keeps the richest note in each group, merges the others' tags, notes, and favorite flag into it, then deletes the duplicates you confirm.
+- **Bulk re-tag selected bookmarks**: re-runs the classifier and replaces tags, showing the old set next to the new one.
+- **Suggest folder moves for selected bookmarks**: proposes a better subfolder for notes that look misfiled and moves the ones you approve.
+- **Clean up broken links**: finds dead URLs and offers a per-item fix: swap in a Wayback Machine snapshot, move the note to a `_broken` folder, or mark it with a `broken` flag and a `#broken` tag. Nothing is deleted.
+
+The two AI commands work on the cards you tick on the board (each card has a selection checkbox, with Select all / Select none in the toolbar). With nothing selected they fall back to the cards currently visible under your filters. A batch cap keeps a single run bounded; re-run to continue.
+
 On the board, right-click a card for its actions: open URL, move to category, regenerate tags, delete.
 
 ## Settings
 
-The settings tab covers the classifier (mode, model, API key), the vault layout (root folder, default `_bookmarks`), preview behavior (image proxy, screenshot fallback), the free service layers (favicon, Wayback), classification behavior (allow new tags, allow new folders, duplicate and same-domain warnings, max tags, excerpt length), and a Raindrop API token for the Raindrop import. The API key and token fields each have a Test button to check they work.
+The settings tab covers the classifier (mode, model, API key), the vault layout (root folder, default `_bookmarks`), preview behavior (image proxy, screenshot fallback), the free service layers (favicon, Wayback), classification behavior (allow new tags, allow new folders, duplicate and same-domain warnings, max tags, excerpt length), the Organize commands (batch cap, broken-link folder, default broken-link remediation), and a Raindrop API token for the Raindrop import. The API key and token fields each have a Test button to check they work.
 
 ## Privacy
 

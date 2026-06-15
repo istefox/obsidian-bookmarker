@@ -13,6 +13,9 @@ import { ImportModal } from "./import-modal";
 import { fetchRaindropItems } from "./raindrop";
 import { importBookmarks } from "./import-writer";
 import { BookmarkSuggestModal, listBookmarkFiles } from "./bookmark-suggest";
+import { deduplicateBookmarks } from "./organize-dedup";
+import { cleanUpBrokenLinks } from "./organize-broken";
+import { bulkRetagBookmarks, suggestFolderMoves } from "./organize-ai";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
@@ -65,6 +68,26 @@ export default class BookmarkerPlugin extends Plugin {
 			id: "check-broken-links",
 			name: "Check for broken links",
 			callback: () => void this.runBrokenLinkCheck(),
+		});
+		this.addCommand({
+			id: "organize-deduplicate",
+			name: "Deduplicate bookmarks",
+			callback: () => void deduplicateBookmarks(this),
+		});
+		this.addCommand({
+			id: "organize-fix-broken-links",
+			name: "Clean up broken links",
+			callback: () => void cleanUpBrokenLinks(this),
+		});
+		this.addCommand({
+			id: "organize-retag",
+			name: "Bulk re-tag selected bookmarks",
+			callback: () => void bulkRetagBookmarks(this),
+		});
+		this.addCommand({
+			id: "organize-suggest-folders",
+			name: "Suggest folder moves for selected bookmarks",
+			callback: () => void suggestFolderMoves(this),
 		});
 		this.addCommand({
 			id: "import-bookmarks",

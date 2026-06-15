@@ -56,7 +56,11 @@ function bookmarkFiles(app: App, rootFolder: string): TFile[] {
 	return out;
 }
 
-async function isUrlBroken(url: string): Promise<boolean> {
+/**
+ * Conservative liveness test: only a 404/410 or a network failure/timeout counts as
+ * broken. 403/429/5xx (anti-bot, rate limiting) are NOT treated as broken.
+ */
+export async function isUrlBroken(url: string): Promise<boolean> {
 	try {
 		const response = await withTimeout(
 			requestUrl({ url, method: "GET", throw: false }),
