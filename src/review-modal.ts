@@ -195,8 +195,10 @@ export class ReviewModal extends Modal {
 					// On a possible duplicate, require a second confirming click.
 					if (isDuplicate && !armed) {
 						armed = true;
-						// eslint-disable-next-line @typescript-eslint/no-deprecated -- setDestructive() requires Obsidian 1.13.0; setWarning keeps minAppVersion at 1.7.2
-						button.setButtonText("Confirm duplicate save").setWarning();
+						button.setButtonText("Confirm duplicate save");
+						// Warning style via the native CSS class: setWarning is
+						// deprecated and setDestructive needs Obsidian 1.13.0.
+						button.buttonEl.addClass("mod-warning");
 						return;
 					}
 					this.save();
