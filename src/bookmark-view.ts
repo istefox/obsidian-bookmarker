@@ -4,6 +4,7 @@ import {
 	Menu,
 	Notice,
 	normalizePath,
+	prepareFuzzySearch,
 	TFile,
 	WorkspaceLeaf,
 } from "obsidian";
@@ -18,6 +19,7 @@ import { ensureFolder, sanitizeFolderPath } from "./note-writer";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
+const MAX_RELATED = 50;
 
 interface BookmarkItem {
 	file: TFile;
@@ -31,6 +33,7 @@ interface BookmarkItem {
 	type: string;
 	favorite: boolean;
 	broken: boolean;
+	description: string;
 }
 
 /** Raindrop-like board: a grid of cover cards for the saved bookmarks (read-only). */
@@ -38,6 +41,7 @@ export class BookmarkView extends ItemView {
 	private readonly plugin: BookmarkerPlugin;
 	private items: BookmarkItem[] = [];
 	private search = "";
+	private relatedTo: BookmarkItem | null = null;
 	private folderFilter = "";
 	private tagFilter = "";
 	private domainFilter = "";
@@ -102,6 +106,13 @@ export class BookmarkView extends ItemView {
 	/** Re-scan the vault and redraw the grid, keeping the toolbar and filters. */
 	private refreshData(): void {
 		this.loadBookmarks();
+		// Leave related mode if its source bookmark was deleted.
+		const related = this.relatedTo;
+		if (related && !this.items.some((i) => i.file.path === related.file.path)) {
+			this.relatedTo = null;
+			this.rebuild();
+			return;
+		}
 		this.renderGrid();
 	}
 
@@ -146,6 +157,7 @@ export class BookmarkView extends ItemView {
 				type: asString(fm.type) || "link",
 				favorite: fm.favorite === true,
 				broken: fm.broken === true,
+				description: asString(fm.description),
 			});
 		}
 		items.sort((a, b) => b.created.localeCompare(a.created));
@@ -162,6 +174,17 @@ export class BookmarkView extends ItemView {
 			});
 			chip.addEventListener("click", () => {
 				this.domainFilter = "";
+				this.rebuild();
+			});
+		}
+
+		if (this.relatedTo) {
+			const chip = toolbar.createSpan({
+				cls: "bookmarker-tag-chip bookmarker-tag-active",
+				text: `Related to ${this.relatedTo.title} ✕`,
+			});
+			chip.addEventListener("click", () => {
+				this.relatedTo = null;
 				this.rebuild();
 			});
 		}
@@ -222,7 +245,10 @@ export class BookmarkView extends ItemView {
 			cls: "bookmarker-refresh",
 			text: "Refresh",
 		});
-		refresh.addEventListener("click", () => this.rebuild());
+		refresh.addEventListener("click", () => {
+			this.relatedTo = null;
+			this.rebuild();
+		});
 
 		this.countEl = toolbar.createSpan({ cls: "bookmarker-count" });
 
@@ -261,6 +287,9 @@ export class BookmarkView extends ItemView {
 	}
 
 	private filtered(): BookmarkItem[] {
+		if (this.relatedTo) return this.relatedItems(this.relatedTo);
+		// Fuzzy match (typo/word-order tolerant) over title, domain, url, tags, description.
+		const matcher = this.search ? prepareFuzzySearch(this.search) : null;
 		return this.items.filter((item) => {
 			if (
 				this.domainFilter &&
@@ -273,13 +302,34 @@ export class BookmarkView extends ItemView {
 			if (this.favoritesOnly && !item.favorite) return false;
 			if (this.brokenOnly && !item.broken) return false;
 			if (this.tagFilter && !item.tags.includes(this.tagFilter)) return false;
-			if (this.search) {
-				const hay =
-					`${item.title} ${item.domain} ${item.url} ${item.tags.join(" ")}`.toLowerCase();
-				if (!hay.includes(this.search)) return false;
-			}
+			if (matcher && !matcher(haystack(item))) return false;
 			return true;
 		});
+	}
+
+	/** Bookmarks related to the source, ranked by shared tags, then domain, then type. */
+	private relatedItems(source: BookmarkItem): BookmarkItem[] {
+		const srcTags = new Set(source.tags.map((t) => t.toLowerCase()));
+		const srcDomain = source.domain.toLowerCase().replace(/^www\./, "");
+		const scored = this.items
+			.filter((c) => c.file.path !== source.file.path)
+			.map((c) => {
+				const sharedTags = c.tags.filter((t) => srcTags.has(t.toLowerCase())).length;
+				const cDomain = c.domain.toLowerCase().replace(/^www\./, "");
+				const sameDomain = srcDomain && cDomain === srcDomain ? 1 : 0;
+				const sameType = c.type === source.type ? 1 : 0;
+				return { item: c, sharedTags, sameDomain, sameType };
+			})
+			// Include on at least one shared tag or the same domain; type alone is too broad.
+			.filter((s) => s.sharedTags >= 1 || s.sameDomain === 1);
+		scored.sort(
+			(a, b) =>
+				b.sharedTags - a.sharedTags ||
+				b.sameDomain - a.sameDomain ||
+				b.sameType - a.sameType ||
+				b.item.created.localeCompare(a.item.created),
+		);
+		return scored.slice(0, MAX_RELATED).map((s) => s.item);
 	}
 
 	private renderCard(item: BookmarkItem): void {
@@ -360,6 +410,12 @@ export class BookmarkView extends ItemView {
 		);
 		menu.addItem((i) =>
 			i
+				.setTitle("Show related")
+				.setIcon("layers")
+				.onClick(() => this.showRelated(item)),
+		);
+		menu.addItem((i) =>
+			i
 				.setTitle("Move to category…")
 				.setIcon("folder")
 				.onClick(() => this.moveToCategory(item)),
@@ -378,6 +434,12 @@ export class BookmarkView extends ItemView {
 				.onClick(() => void this.deleteBookmark(item)),
 		);
 		menu.showAtMouseEvent(event);
+	}
+
+	/** Enter related mode: the board shows the bookmarks related to this one. */
+	private showRelated(item: BookmarkItem): void {
+		this.relatedTo = item;
+		this.rebuild();
 	}
 
 	private async deleteBookmark(item: BookmarkItem): Promise<void> {
@@ -452,6 +514,11 @@ export class BookmarkView extends ItemView {
 
 function asString(value: unknown): string {
 	return typeof value === "string" ? value : "";
+}
+
+/** The text a fuzzy search runs against for one bookmark. */
+function haystack(item: BookmarkItem): string {
+	return `${item.title} ${item.domain} ${item.url} ${item.tags.join(" ")} ${item.description}`;
 }
 
 function normalizeTags(value: unknown): string[] {
