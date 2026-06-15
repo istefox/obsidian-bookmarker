@@ -1,9 +1,11 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { testClaudeConnection } from "./classifier";
+import { testRaindropToken } from "./raindrop";
 
 export interface BookmarkerSettings {
 	anthropicApiKey: string;
+	raindropToken: string;
 	classifierMode: "claude" | "heuristic";
 	model: string;
 	rootFolder: string;
@@ -22,6 +24,7 @@ export interface BookmarkerSettings {
 
 export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	anthropicApiKey: "",
+	raindropToken: "",
 	classifierMode: "claude",
 	model: "claude-haiku-4-5",
 	rootFolder: "_bookmarks",
@@ -307,6 +310,40 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 							this.plugin.settings.excerptLength = Math.floor(parsed);
 							await this.plugin.saveSettings();
 						}
+					}),
+			);
+
+		new Setting(containerEl).setName("Import").setHeading();
+
+		new Setting(containerEl)
+			.setName("Raindrop API token")
+			.setDesc(
+				"For the 'Import from Raindrop' command. Create a test token at raindrop.io: " +
+					"Settings, Integrations, For Developers, then a new app. Stored in plaintext in data.json.",
+			)
+			.addText((text) => {
+				text.inputEl.type = "password";
+				text
+					.setPlaceholder("token")
+					.setValue(this.plugin.settings.raindropToken)
+					.onChange(async (value) => {
+						this.plugin.settings.raindropToken = value.trim();
+						await this.plugin.saveSettings();
+					});
+			})
+			.addButton((button) =>
+				button
+					.setButtonText("Test")
+					.setTooltip("Check that the saved Raindrop token is valid")
+					.onClick(async () => {
+						button.setButtonText("Testing…").setDisabled(true);
+						const result = await testRaindropToken(this.plugin.settings.raindropToken);
+						new Notice(
+							result.ok
+								? `Bookmarker: Raindrop OK (${result.detail}).`
+								: `Bookmarker: Raindrop failed (${result.detail}).`,
+						);
+						button.setButtonText("Test").setDisabled(false);
 					}),
 			);
 	}

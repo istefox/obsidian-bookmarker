@@ -4,6 +4,12 @@ export interface ImportItem {
 	tags: string[];
 	folder?: string;
 	created?: string;
+	/** Cover image URL (Raindrop). Becomes the note's preview image. */
+	cover?: string;
+	description?: string;
+	favorite?: boolean;
+	/** Content type if the source provides one (Raindrop); else inferred. */
+	type?: string;
 }
 
 /** Parse a Netscape HTML or CSV export into bookmark items. */
@@ -41,21 +47,28 @@ function parseCsv(text: string): ImportItem[] {
 	const tagsI = col("tags");
 	const folderI = col("folder");
 	const createdI = col("created");
+	const coverI = col("cover");
+	const excerptI = col("excerpt");
+	const favoriteI = col("favorite");
 	if (urlI < 0) return [];
 
+	const cell = (row: string[], i: number) => (i >= 0 ? (row[i] ?? "").trim() : "");
 	const items: ImportItem[] = [];
 	for (let r = 1; r < rows.length; r++) {
 		const row = rows[r];
-		const url = (row[urlI] ?? "").trim();
+		const url = cell(row, urlI);
 		if (!/^https?:\/\//i.test(url)) continue;
-		const folder = folderI >= 0 ? (row[folderI] ?? "").trim() : "";
-		const created = createdI >= 0 ? (row[createdI] ?? "").trim() : "";
+		const cover = cell(row, coverI);
+		const favorite = cell(row, favoriteI).toLowerCase();
 		items.push({
 			url,
-			title: (titleI >= 0 ? (row[titleI] ?? "").trim() : "") || url,
+			title: cell(row, titleI) || url,
 			tags: tagsI >= 0 ? splitTags(row[tagsI]) : [],
-			folder: folder || undefined,
-			created: created || undefined,
+			folder: cell(row, folderI) || undefined,
+			created: cell(row, createdI) || undefined,
+			cover: /^https?:\/\//i.test(cover) ? cover : undefined,
+			description: cell(row, excerptI) || undefined,
+			favorite: favorite === "true" || favorite === "1" || undefined,
 		});
 	}
 	return items;
