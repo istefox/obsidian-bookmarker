@@ -10,6 +10,8 @@ import { isHttpUrl } from "./url-safety";
 import { BOOKMARK_VIEW_TYPE, BookmarkView } from "./bookmark-view";
 import { checkBrokenLinks } from "./link-check";
 import { ImportModal } from "./import-modal";
+import { fetchRaindropItems } from "./raindrop";
+import { importBookmarks } from "./import-writer";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
@@ -68,6 +70,11 @@ export default class BookmarkerPlugin extends Plugin {
 			name: "Import bookmarks…",
 			callback: () => new ImportModal(this.app, this).open(),
 		});
+		this.addCommand({
+			id: "import-from-raindrop",
+			name: "Import from Raindrop",
+			callback: () => void this.runRaindropImport(),
+		});
 
 		this.addSettingTab(new BookmarkerSettingTab(this.app, this));
 	}
@@ -88,6 +95,38 @@ export default class BookmarkerPlugin extends Plugin {
 			notice.hide();
 			const message = error instanceof Error ? error.message : String(error);
 			new Notice(`Link check failed: ${message}`);
+		}
+	}
+
+	private async runRaindropImport(): Promise<void> {
+		const token = this.settings.raindropToken;
+		if (!token) {
+			new Notice("Bookmarker: set your Raindrop API token in settings first.");
+			return;
+		}
+		const notice = new Notice("Fetching from Raindrop…", 0);
+		try {
+			const items = await fetchRaindropItems(token, (count) =>
+				notice.setMessage(`Fetching from Raindrop… ${count} found`),
+			);
+			if (items.length === 0) {
+				notice.hide();
+				new Notice("Bookmarker: no bookmarks found in Raindrop.");
+				return;
+			}
+			const { imported, skipped, failed } = await importBookmarks(
+				this.app,
+				this.settings,
+				items,
+				(done, total) => notice.setMessage(`Importing ${done}/${total}…`),
+			);
+			notice.hide();
+			const tail = failed ? `, ${failed} failed` : "";
+			new Notice(`Raindrop import: ${imported} imported, ${skipped} skipped${tail}.`);
+		} catch (error) {
+			notice.hide();
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`Raindrop import failed: ${message}`);
 		}
 	}
 
