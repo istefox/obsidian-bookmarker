@@ -42,6 +42,48 @@ export async function classifyBookmark(
 	}
 }
 
+/** Live check that the configured key and model can reach the Anthropic API. */
+export async function testClaudeConnection(
+	settings: BookmarkerSettings,
+): Promise<{ ok: boolean; detail: string }> {
+	if (!settings.anthropicApiKey) {
+		return { ok: false, detail: "no API key set" };
+	}
+	try {
+		const response = await requestUrl({
+			url: ANTHROPIC_URL,
+			method: "POST",
+			throw: false,
+			headers: {
+				"x-api-key": settings.anthropicApiKey,
+				"anthropic-version": ANTHROPIC_VERSION,
+				"content-type": "application/json",
+				"anthropic-dangerous-direct-browser-access": "true",
+			},
+			body: JSON.stringify({
+				model: settings.model,
+				max_tokens: 1,
+				messages: [{ role: "user", content: "ping" }],
+			}),
+		});
+		if (response.status >= 200 && response.status < 300) {
+			return { ok: true, detail: `model ${settings.model}` };
+		}
+		const apiMsg = extractErrorMessage(response.json);
+		return { ok: false, detail: `HTTP ${response.status}${apiMsg ? `: ${apiMsg}` : ""}` };
+	} catch (error) {
+		return { ok: false, detail: error instanceof Error ? error.message : String(error) };
+	}
+}
+
+function extractErrorMessage(json: unknown): string {
+	if (json && typeof json === "object" && "error" in json) {
+		const err = (json as { error?: { message?: unknown } }).error;
+		if (err && typeof err.message === "string") return err.message;
+	}
+	return "";
+}
+
 /** Shape returned by the engines before post-processing. */
 interface RawProposal {
 	tags: string[];
@@ -144,8 +186,8 @@ function buildSystemPrompt(
 		? "Reuse an existing tag only when it is genuinely about the same topic. If none truly fits, propose a precise NEW tag instead of stretching a loosely related one."
 		: "Use ONLY tags from the existing list. If none is genuinely relevant, return an empty tags array. Never force a weakly related tag.";
 	const folderRule = allowNewFolders
-		? "Pick the single best existing folder. If none fits, propose a concise NEW category folder (set isNewFolder true)."
-		: "Pick the single best existing folder. If none fits, leave folder empty (it goes to the root).";
+		? "Choose an existing folder ONLY when the page is genuinely about that folder's topic. A loose thematic link (e.g. both mention AI) is not enough. When no existing folder is a clear topical match, propose a concise NEW folder named for the page's actual subject (set isNewFolder true)."
+		: "Choose an existing folder ONLY when the page is genuinely about that folder's topic. A loose thematic link is not enough. When none clearly matches, leave folder empty (it goes to the root).";
 
 	return [
 		"You are a bookmark classifier for an Obsidian vault. Given a web page's metadata,",
@@ -154,6 +196,8 @@ function buildSystemPrompt(
 		"- Tags describe the page's TOPIC or SUBJECT MATTER, never the action of buying or",
 		'  visiting. For an online store page, tag the kind of product (e.g. "ebooks",',
 		'  "kindle", "libri"), not "shopping", "spesa", or "groceries".',
+		"- The excerpt may include site navigation, menus, and category labels. Judge the",
+		"  topic from the title, description, and main content, not from stray menu words.",
 		"- The existing tags/folders are a vocabulary to reuse ONLY when relevant. Never",
 		"  pick one just because it is the only option available; an irrelevant tag or",
 		"  folder is worse than a precise new one.",
@@ -166,6 +210,9 @@ function buildSystemPrompt(
 		'Correct: {"tags":["ebook","kindle","libri"],"folder":"Libri","isNewFolder":true,',
 		'"newTags":["ebook","kindle","libri"],"confidence":0.8}. Wrong: using "spesa" — the',
 		"page is about ebooks, not groceries.",
+		"Example. Page about an Obsidian plugin, existing folders: formazione, API keys.",
+		'Correct: a new folder like "Obsidian" or "Plugins" (isNewFolder true). Wrong:',
+		'reusing "formazione" just because the plugin mentions AI; that is a loose link.',
 		`Existing tags: ${tagList}`,
 		`Existing folders (relative to root): ${folderList}`,
 	].join("\n");
