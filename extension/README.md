@@ -9,12 +9,18 @@ current tab's URL to the **Bookmarker** Obsidian plugin through
 See `docs/architecture/ADR-001` in the plugin repo for why the capture logic lives
 in the plugin and not here.
 
+## Install
+
+From the [Chrome Web Store](https://chromewebstore.google.com/detail/gmpfgkokpoblhaajglclanlmfnldoiee):
+one click, with automatic updates. Then pin the **Bookmarker** action to the toolbar.
+The steps in "Install (unpacked, for development)" below load the source instead.
+
 ## Requirements
 
 - The **Bookmarker** Obsidian plugin installed and enabled, with Obsidian running (or
   launchable) — it registers the `obsidian://bookmark` handler.
 
-## Install (unpacked, for personal use)
+## Install (unpacked, for development)
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode** (top right).
