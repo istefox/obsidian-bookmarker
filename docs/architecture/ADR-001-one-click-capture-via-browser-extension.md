@@ -67,6 +67,21 @@ Extension POSTs to `https://127.0.0.1:27124/` exposed by the
 and would push part of the capture chain into the extension. Fails the cross-platform
 requirement and adds user friction.
 
+### D) Saved-page indicator badge in the extension (rejected)
+Considered 2026-06-15. A Raindrop-style checkmark on the extension icon when the
+current page is already bookmarked. It needs two things the design rules out. First,
+to badge pages as you browse, the extension must read every tab's URL without a
+click, which means the `tabs` permission or host permissions instead of `activeTab`.
+That triggers the "access your data on all websites" warning, a privacy disclosure,
+and a fresh Web Store review, so the minimal-permission posture is gone. Second, the
+extension cannot read the vault, so it would need either a localhost server in the
+plugin (desktop-only, and a backend by another name, which contradicts this ADR) or
+a partial list of URLs saved only through the extension (it misses captures from the
+command palette, imports, and other devices). Rejected to keep the no-backend,
+minimal-permission, mobile-safe design intact. If an "already saved" hint is ever
+wanted, it belongs inside Obsidian, where the duplicate detection at capture already
+does this, not in the browser extension.
+
 ## Consequences
 
 **Positive**
