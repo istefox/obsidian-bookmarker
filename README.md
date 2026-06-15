@@ -67,7 +67,7 @@ The fallback link at the bottom works even without a preview plugin installed.
 Bookmarker is not in the community plugin directory yet, so install it manually:
 
 1. Build the plugin (`npm install && npm run build`) or grab `main.js`, `manifest.json`, and `styles.css` from a release.
-2. Copy those three files into `<your vault>/.obsidian/plugins/obsidian-bookmarker/`.
+2. Copy those three files into `<your vault>/.obsidian/plugins/bookmarker/`.
 3. Enable **Bookmarker** in Obsidian's Community Plugins settings, then reload.
 
 ### Browser extension (desktop one-click)
@@ -91,7 +91,7 @@ The settings tab covers the classifier (mode, model, API key), the vault layout 
 
 ## Privacy
 
-- The Anthropic API key is stored in plaintext in `.obsidian/plugins/obsidian-bookmarker/data.json`. If you sync your `.obsidian` folder, the key syncs with it. Exclude that file from sync.
+- The Anthropic API key is stored in plaintext in `.obsidian/plugins/bookmarker/data.json`. If you sync your `.obsidian` folder, the key syncs with it. Exclude that file from sync.
 - The Claude classifier sends the page title, description, and a text excerpt to the Anthropic API. Use the heuristic mode to keep everything offline.
 - The image proxy (wsrv.nl) and the screenshot fallback (Microlink) see the image and page URLs you save. Both are optional and can be turned off in settings.
 

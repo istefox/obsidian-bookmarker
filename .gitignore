@@ -4,6 +4,7 @@ main.js
 
 # Extension upload package (built on demand for the Chrome Web Store)
 bookmarker-extension.zip
+bookmarker-extension/
 
 # Dependencies
 node_modules/
