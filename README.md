@@ -10,11 +10,11 @@ The goal is a Raindrop-style bookmarking experience that lives entirely in plain
 - **AI tags and folder.** A Claude classifier reads the page and proposes tags plus a destination subfolder, reusing the tags and folders already in your vault instead of inventing a fresh taxonomy. An offline heuristic mode is available with no API key.
 - **Review before saving.** A review window lets you edit the title, tags, and destination folder before the note is written. Turn it off for a silent one-click save.
 - **Preview images.** Bookmarker extracts the page's Open Graph, Twitter, and JSON-LD image, falls back to a Microlink screenshot when a page exposes none, and can serve images through the wsrv.nl cache/proxy. A cover picker in the review window lets you choose among candidates or paste a custom image URL.
-- **Board view.** A grid of cover cards for everything you saved, with filters by tag, folder, domain, and type, plus a favorites flag.
+- **Board view.** A grid of cover cards for everything you saved, with filters by tag, folder, domain, and type, plus a favorites flag. Right-click a card to open its URL in the browser, move it to another category (an existing one or a new folder you name), regenerate its tags, or delete it.
 - **Duplicate awareness.** Before saving it checks whether the URL is already bookmarked: an exact match is blocked, a same-page-different-tracking match is flagged, and other pages from the same domain raise a quiet notice with a link to them.
 - **Type detection and favorites.** Each bookmark is tagged as an article, video, image, document, audio, or link, and can be starred.
 - **Broken-link checker.** An on-demand command tests every saved URL and flags dead ones in frontmatter. It is deliberately conservative: only a 404/410 or a network failure counts as broken, so anti-bot 403/429 and 5xx responses are left alone.
-- **Import.** Bring in your existing bookmarks from a Pocket, Raindrop, or browser HTML export, or from a Raindrop CSV.
+- **Import.** Pull your whole Raindrop library straight from the Raindrop API, covers and collections included, with a token set in settings. You can also bring in a Pocket, Raindrop, or browser HTML export, or a Raindrop CSV.
 
 Several helpers degrade gracefully and stay out of the way: a favicon fallback service, an optional Wayback Machine snapshot, and the image proxy can each be turned off.
 
@@ -88,10 +88,13 @@ No extension is needed. Make an Apple Shortcut on the Share Sheet that opens `ob
 - **Open bookmarks board**: ribbon icon and command. Opens the grid view.
 - **Check for broken links**: command that scans every saved bookmark and flags dead URLs.
 - **Import bookmarks…**: command that opens the import window for an HTML or CSV file.
+- **Import from Raindrop**: command that pulls every bookmark from your Raindrop account through the API, with covers and collections. Set the token in settings first.
+
+On the board, right-click a card for its actions: open URL, move to category, regenerate tags, delete.
 
 ## Settings
 
-The settings tab covers the classifier (mode, model, API key), the vault layout (root folder, default `_bookmarks`), preview behavior (image proxy, screenshot fallback), the free service layers (favicon, Wayback), and classification behavior (allow new tags, allow new folders, duplicate and same-domain warnings, max tags, excerpt length).
+The settings tab covers the classifier (mode, model, API key), the vault layout (root folder, default `_bookmarks`), preview behavior (image proxy, screenshot fallback), the free service layers (favicon, Wayback), classification behavior (allow new tags, allow new folders, duplicate and same-domain warnings, max tags, excerpt length), and a Raindrop API token for the Raindrop import. The API key and token fields each have a Test button to check they work.
 
 ## Privacy
 
