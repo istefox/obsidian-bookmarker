@@ -72,7 +72,9 @@ Bookmarker is not in the community plugin directory yet, so install it manually:
 
 ### Browser extension (desktop one-click)
 
-The `extension/` folder holds a small Manifest V3 extension. Load it unpacked (Chrome: `chrome://extensions` → Developer mode → Load unpacked → select `extension/`). Clicking its toolbar button opens `obsidian://bookmark?url=<current tab>`, which hands the URL to the plugin. See `extension/README.md` for details.
+Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/gmpfgkokpoblhaajglclanlmfnldoiee) (Chrome, Edge, Brave, Arc). Click its toolbar button on any page and Obsidian saves the bookmark.
+
+The `extension/` folder also holds the source. To run it unpacked for development: Chrome `chrome://extensions` → Developer mode → Load unpacked → select `extension/`. The button opens `obsidian://bookmark?url=<current tab>`, which hands the URL to the plugin. See `extension/README.md` for details.
 
 ### Mobile (iOS/iPad)
 
