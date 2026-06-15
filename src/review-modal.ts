@@ -155,7 +155,7 @@ export class ReviewModal extends Modal {
 			.setName("Destination folder")
 			.setDesc("Where to file this bookmark, under the root folder.")
 			.addDropdown((dropdown) => {
-				dropdown.addOption("", "(root)");
+				dropdown.addOption("", "(Root)");
 				for (const folder of this.input.taxonomy.folders) {
 					dropdown.addOption(folder, folder);
 				}
@@ -173,7 +173,7 @@ export class ReviewModal extends Modal {
 				.setName("Or new subfolder")
 				.setDesc("If set, overrides the dropdown above.")
 				.addText((text) =>
-					text.setPlaceholder("e.g. tech/ai").onChange((v) => {
+					text.setPlaceholder("E.g. Tech/AI").onChange((v) => {
 						this.newFolder = v.trim().replace(/^\/+|\/+$/g, "");
 					}),
 				);
@@ -195,6 +195,7 @@ export class ReviewModal extends Modal {
 					// On a possible duplicate, require a second confirming click.
 					if (isDuplicate && !armed) {
 						armed = true;
+						// eslint-disable-next-line @typescript-eslint/no-deprecated -- setDestructive() requires Obsidian 1.13.0; setWarning keeps minAppVersion at 1.7.2
 						button.setButtonText("Confirm duplicate save").setWarning();
 						return;
 					}

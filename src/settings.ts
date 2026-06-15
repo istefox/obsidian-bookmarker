@@ -68,9 +68,10 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 		const warning = containerEl.createEl("p", {
 			cls: "bookmarker-setting-warning",
 		});
+		const configDir = this.plugin.app.vault.configDir;
 		warning.setText(
-			"Privacy: the API key is stored in .obsidian/plugins/bookmarker/data.json. " +
-				"If you sync .obsidian, the key syncs too — exclude it from sync.",
+			`Privacy: the API key is stored in ${configDir}/plugins/bookmarker/data.json. ` +
+				`If you sync ${configDir}, the key syncs too, so exclude it from sync.`,
 		);
 
 		new Setting(containerEl)
@@ -89,7 +90,7 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Model")
-			.setDesc("Anthropic model id used by the Claude classifier.")
+			.setDesc("Anthropic model ID used by the Claude classifier.")
 			.addText((text) =>
 				text
 					.setValue(this.plugin.settings.model)

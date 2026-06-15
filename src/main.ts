@@ -39,7 +39,7 @@ export default class BookmarkerPlugin extends Plugin {
 		this.registerObsidianProtocolHandler("bookmark", (params) => {
 			const url = (params.url ?? "").trim();
 			if (!isHttpUrl(url)) {
-				new Notice("Bookmarker: obsidian://bookmark needs a valid http(s) url.");
+				new Notice("Bookmarker: obsidian://bookmark needs a valid HTTP(s) URL.");
 				return;
 			}
 			void captureBookmark(this, url);
@@ -106,7 +106,8 @@ export default class BookmarkerPlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const data = (await this.loadData()) as Partial<BookmarkerSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
 	}
 
 	async saveSettings(): Promise<void> {
