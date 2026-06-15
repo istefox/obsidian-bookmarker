@@ -30,7 +30,7 @@ export async function writeBookmarkNote(
 }
 
 /** Filesystem-safe relative folder path: drop ".."/"." segments and illegal chars. */
-function sanitizeFolderPath(folder: string): string {
+export function sanitizeFolderPath(folder: string): string {
 	return folder
 		.split(/[/\\]+/)
 		.map((seg) => seg.replace(/[\\/:*?"<>|]/g, "").trim())
@@ -39,7 +39,7 @@ function sanitizeFolderPath(folder: string): string {
 }
 
 /** Create a folder and any missing parents, tolerating folders that already exist. */
-async function ensureFolder(app: App, path: string): Promise<void> {
+export async function ensureFolder(app: App, path: string): Promise<void> {
 	let current = "";
 	for (const part of path.split("/")) {
 		current = current ? `${current}/${part}` : part;

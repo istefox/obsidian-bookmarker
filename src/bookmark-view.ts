@@ -14,6 +14,7 @@ import { readTaxonomy } from "./taxonomy";
 import { classifyBookmark } from "./classifier";
 import { FolderSuggestModal } from "./folder-suggest";
 import { RegenerateTagsModal } from "./regenerate-tags-modal";
+import { ensureFolder, sanitizeFolderPath } from "./note-writer";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
@@ -391,17 +392,25 @@ export class BookmarkView extends ItemView {
 	}
 
 	private moveToCategory(item: BookmarkItem): void {
-		const root = normalizePath(this.plugin.settings.rootFolder);
 		const folders = readTaxonomy(this.app, this.plugin.settings.rootFolder).folders;
 		new FolderSuggestModal(this.app, folders, (rel) => {
-			const targetDir = rel ? normalizePath(`${root}/${rel}`) : root;
-			const newPath = normalizePath(`${targetDir}/${item.file.basename}.md`);
-			if (newPath === item.file.path) return;
-			void this.app.fileManager.renameFile(item.file, newPath).catch((error: unknown) => {
-				const msg = error instanceof Error ? error.message : String(error);
-				new Notice(`Move failed: ${msg}`);
-			});
+			void this.doMove(item, sanitizeFolderPath(rel));
 		}).open();
+	}
+
+	private async doMove(item: BookmarkItem, rel: string): Promise<void> {
+		const root = normalizePath(this.plugin.settings.rootFolder);
+		const targetDir = rel ? normalizePath(`${root}/${rel}`) : root;
+		const newPath = normalizePath(`${targetDir}/${item.file.basename}.md`);
+		if (newPath === item.file.path) return;
+		try {
+			// Create the category folder (and parents) when it is new.
+			await ensureFolder(this.app, targetDir);
+			await this.app.fileManager.renameFile(item.file, newPath);
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			new Notice(`Move failed: ${msg}`);
+		}
 	}
 
 	private async regenerateTags(item: BookmarkItem): Promise<void> {
