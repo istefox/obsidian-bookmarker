@@ -14,3 +14,6 @@ data.json
 
 # OS
 .DS_Store
+
+# Claude Code session/tooling files
+.claude/

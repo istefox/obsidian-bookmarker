@@ -68,10 +68,6 @@ cd icons
 for s in 16 32 48 128; do rsvg-convert -w $s -h $s icon.svg -o icon-$s.png; done
 ```
 
-## Publishing
-
-See `SUBMISSION.md` for the Chrome Web Store submission steps (packaging, listing, privacy form).
-
 ## Not included yet
 
 Firefox build, passing selected text/title.
