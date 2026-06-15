@@ -1,5 +1,6 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type BookmarkerPlugin from "./main";
+import { testClaudeConnection } from "./classifier";
 
 export interface BookmarkerSettings {
 	anthropicApiKey: string;
@@ -63,7 +64,22 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 						this.plugin.settings.anthropicApiKey = value.trim();
 						await this.plugin.saveSettings();
 					});
-			});
+			})
+			.addButton((button) =>
+				button
+					.setButtonText("Test")
+					.setTooltip("Check that the saved key and model reach the Anthropic API")
+					.onClick(async () => {
+						button.setButtonText("Testing…").setDisabled(true);
+						const result = await testClaudeConnection(this.plugin.settings);
+						new Notice(
+							result.ok
+								? `Bookmarker: classifier OK (${result.detail}).`
+								: `Bookmarker: classifier failed (${result.detail}).`,
+						);
+						button.setButtonText("Test").setDisabled(false);
+					}),
+			);
 
 		const warning = containerEl.createEl("p", {
 			cls: "bookmarker-setting-warning",

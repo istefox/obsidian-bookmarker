@@ -179,11 +179,13 @@ function safeHostname(url: string): string {
 
 /** Strip non-content elements, collapse whitespace, take the first N chars. */
 function extractExcerpt(doc: Document, excerptLength: number): string {
-	const body = doc.body;
-	if (!body) return "";
-	const clone = body.cloneNode(true) as HTMLElement;
+	// Prefer the main content container so site chrome (menus, headers, sidebars)
+	// does not dominate the excerpt and bias classification. Fall back to the body.
+	const source = doc.querySelector("article") ?? doc.querySelector("main") ?? doc.body;
+	if (!source) return "";
+	const clone = source.cloneNode(true) as HTMLElement;
 	clone
-		.querySelectorAll("script, style, nav, footer, noscript")
+		.querySelectorAll("script, style, nav, header, footer, aside, form, noscript")
 		.forEach((el) => el.remove());
 	const text = (clone.textContent ?? "").replace(/\s+/g, " ").trim();
 	return text.slice(0, excerptLength);

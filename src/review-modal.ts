@@ -170,8 +170,8 @@ export class ReviewModal extends Modal {
 
 		if (this.input.allowNewFolders) {
 			new Setting(contentEl)
-				.setName("Or new subfolder")
-				.setDesc("If set, overrides the dropdown above.")
+				.setName("New folder")
+				.setDesc("Create a new subfolder instead of picking above. Use a slash to nest, e.g. folder/subfolder.")
 				.addText((text) =>
 					text.setPlaceholder("E.g. Tech/AI").onChange((v) => {
 						this.newFolder = v.trim().replace(/^\/+|\/+$/g, "");

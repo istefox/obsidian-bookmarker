@@ -1,4 +1,4 @@
-import { ItemView, Notice, normalizePath, TFile, WorkspaceLeaf } from "obsidian";
+import { debounce, ItemView, Notice, normalizePath, TFile, WorkspaceLeaf } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { isSafeRemoteUrl } from "./url-safety";
 
@@ -52,6 +52,43 @@ export class BookmarkView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.rebuild();
+
+		// Keep the board live. metadataCache "changed" fires once a file's
+		// frontmatter is parsed, so a freshly saved bookmark appears on its own,
+		// no manual refresh or app reload. Create/delete/rename cover the rest.
+		const refresh = debounce(() => this.refreshData(), 300);
+		this.registerEvent(
+			this.app.metadataCache.on("changed", (file) => {
+				if (this.isUnderRoot(file.path)) refresh();
+			}),
+		);
+		this.registerEvent(
+			this.app.vault.on("create", (file) => {
+				if (this.isUnderRoot(file.path)) refresh();
+			}),
+		);
+		this.registerEvent(
+			this.app.vault.on("delete", (file) => {
+				if (this.isUnderRoot(file.path)) refresh();
+			}),
+		);
+		this.registerEvent(
+			this.app.vault.on("rename", (file, oldPath) => {
+				if (this.isUnderRoot(file.path) || this.isUnderRoot(oldPath)) refresh();
+			}),
+		);
+	}
+
+	/** True when a path is the root folder or sits under it. */
+	private isUnderRoot(path: string): boolean {
+		const root = normalizePath(this.plugin.settings.rootFolder);
+		return path === root || path.startsWith(`${root}/`);
+	}
+
+	/** Re-scan the vault and redraw the grid, keeping the toolbar and filters. */
+	private refreshData(): void {
+		this.loadBookmarks();
+		this.renderGrid();
 	}
 
 	async onClose(): Promise<void> {
