@@ -1,6 +1,19 @@
-import { debounce, ItemView, Notice, normalizePath, TFile, WorkspaceLeaf } from "obsidian";
+import {
+	debounce,
+	ItemView,
+	Menu,
+	Notice,
+	normalizePath,
+	TFile,
+	WorkspaceLeaf,
+} from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { isSafeRemoteUrl } from "./url-safety";
+import { fetchHtml, parseMetadata } from "./metadata";
+import { readTaxonomy } from "./taxonomy";
+import { classifyBookmark } from "./classifier";
+import { FolderSuggestModal } from "./folder-suggest";
+import { RegenerateTagsModal } from "./regenerate-tags-modal";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
@@ -329,7 +342,103 @@ export class BookmarkView extends ItemView {
 		card.addEventListener("click", () => {
 			void this.app.workspace.getLeaf(false).openFile(item.file);
 		});
+
+		card.addEventListener("contextmenu", (event) => {
+			event.preventDefault();
+			this.showCardMenu(event, item);
+		});
 	}
+
+	private showCardMenu(event: MouseEvent, item: BookmarkItem): void {
+		const menu = new Menu();
+		menu.addItem((i) =>
+			i
+				.setTitle("Open URL")
+				.setIcon("external-link")
+				.onClick(() => window.open(item.url, "_blank")),
+		);
+		menu.addItem((i) =>
+			i
+				.setTitle("Move to category…")
+				.setIcon("folder")
+				.onClick(() => this.moveToCategory(item)),
+		);
+		menu.addItem((i) =>
+			i
+				.setTitle("Regenerate tags")
+				.setIcon("tags")
+				.onClick(() => void this.regenerateTags(item)),
+		);
+		menu.addSeparator();
+		menu.addItem((i) =>
+			i
+				.setTitle("Delete")
+				.setIcon("trash-2")
+				.onClick(() => void this.deleteBookmark(item)),
+		);
+		menu.showAtMouseEvent(event);
+	}
+
+	private async deleteBookmark(item: BookmarkItem): Promise<void> {
+		try {
+			// Recoverable: honours the user's "Deleted files" preference. The board
+			// auto-refreshes from the vault delete event.
+			await this.app.vault.trash(item.file, true);
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			new Notice(`Delete failed: ${msg}`);
+		}
+	}
+
+	private moveToCategory(item: BookmarkItem): void {
+		const root = normalizePath(this.plugin.settings.rootFolder);
+		const folders = readTaxonomy(this.app, this.plugin.settings.rootFolder).folders;
+		new FolderSuggestModal(this.app, folders, (rel) => {
+			const targetDir = rel ? normalizePath(`${root}/${rel}`) : root;
+			const newPath = normalizePath(`${targetDir}/${item.file.basename}.md`);
+			if (newPath === item.file.path) return;
+			void this.app.fileManager.renameFile(item.file, newPath).catch((error: unknown) => {
+				const msg = error instanceof Error ? error.message : String(error);
+				new Notice(`Move failed: ${msg}`);
+			});
+		}).open();
+	}
+
+	private async regenerateTags(item: BookmarkItem): Promise<void> {
+		const notice = new Notice("Fetching tags…", 0);
+		try {
+			const html = await fetchHtml(item.url);
+			const metadata = parseMetadata(html, item.url, this.plugin.settings.excerptLength);
+			const taxonomy = readTaxonomy(this.app, this.plugin.settings.rootFolder);
+			const classification = await classifyBookmark(
+				this.plugin.settings,
+				{
+					url: item.url,
+					domain: metadata.domain,
+					title: metadata.title,
+					description: metadata.description,
+					excerpt: metadata.excerpt,
+				},
+				taxonomy,
+			);
+			notice.hide();
+			new RegenerateTagsModal(this.app, item.title, classification.tags, (tags) => {
+				void this.app.fileManager
+					.processFrontMatter(item.file, (fm: Record<string, unknown>) => {
+						fm.tags = tags;
+					})
+					.catch((error: unknown) => {
+						const msg = error instanceof Error ? error.message : String(error);
+						new Notice(`Failed to update tags: ${msg}`);
+					});
+			}).open();
+		} catch (error) {
+			notice.hide();
+			const msg = error instanceof Error ? error.message : String(error);
+			new Notice(`Regenerate tags failed: ${msg}`);
+		}
+	}
+
 }
 
 function asString(value: unknown): string {
