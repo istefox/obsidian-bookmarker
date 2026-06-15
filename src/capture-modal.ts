@@ -34,7 +34,7 @@ export class CaptureModal extends Modal {
 
 		const submit = () => {
 			if (!this.isValidUrl(this.url)) {
-				errorEl.setText("Enter a valid http(s) URL.");
+				errorEl.setText("Enter a valid HTTP(s) URL.");
 				return;
 			}
 			this.close();
