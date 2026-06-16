@@ -42,11 +42,26 @@
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
-	padding: 2px 8px;
+	padding: 3px 10px;
 	background: var(--tag-background);
 	color: var(--tag-color);
 	border-radius: var(--radius-s);
 	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+}
+
+/* Uniform-size toolbar buttons — match the tag-chip height. */
+.bookmarker-toolbar-btn {
+	padding: 3px 10px;
+	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+	height: auto;
+	cursor: pointer;
+}
+
+.bookmarker-delete-broken {
+	color: var(--text-error);
+	border-color: var(--background-modifier-error-hover);
 }
 
 .bookmarker-tag-remove {

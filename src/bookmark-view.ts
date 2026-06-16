@@ -62,6 +62,7 @@ export class BookmarkView extends ItemView {
 	private gridEl!: HTMLElement;
 	private tagSectionEl!: HTMLElement;
 	private countEl!: HTMLElement;
+	private deleteBrokenBtn!: HTMLButtonElement;
 
 	constructor(leaf: WorkspaceLeaf, plugin: BookmarkerPlugin) {
 		super(leaf);
@@ -268,7 +269,7 @@ export class BookmarkView extends ItemView {
 		});
 
 		const selectAll = toolbar.createEl("button", {
-			cls: "bookmarker-refresh",
+			cls: "bookmarker-toolbar-btn",
 			text: "Select all",
 		});
 		selectAll.addEventListener("click", () => {
@@ -277,7 +278,7 @@ export class BookmarkView extends ItemView {
 		});
 
 		const selectNone = toolbar.createEl("button", {
-			cls: "bookmarker-refresh",
+			cls: "bookmarker-toolbar-btn",
 			text: "Select none",
 		});
 		selectNone.addEventListener("click", () => {
@@ -285,8 +286,16 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
+		const deleteBrokenBtn = toolbar.createEl("button", {
+			cls: "bookmarker-toolbar-btn bookmarker-delete-broken",
+			text: "Delete broken",
+		});
+		deleteBrokenBtn.style.display = "none";
+		deleteBrokenBtn.addEventListener("click", () => void this.deleteBrokenSelected());
+		this.deleteBrokenBtn = deleteBrokenBtn;
+
 		const refresh = toolbar.createEl("button", {
-			cls: "bookmarker-refresh",
+			cls: "bookmarker-toolbar-btn",
 			text: "Refresh",
 		});
 		refresh.addEventListener("click", () => {
@@ -430,6 +439,8 @@ export class BookmarkView extends ItemView {
 		this.gridEl.empty();
 		const items = this.filtered();
 		this.countEl.setText(`${items.length} bookmark${items.length === 1 ? "" : "s"}`);
+		this.deleteBrokenBtn.style.display =
+			this.brokenOnly && this.selected.size > 0 ? "" : "none";
 		if (items.length === 0) {
 			this.gridEl.createDiv({
 				cls: "bookmarker-empty",
@@ -638,6 +649,23 @@ export class BookmarkView extends ItemView {
 			const msg = error instanceof Error ? error.message : String(error);
 			new Notice(`Delete failed: ${msg}`);
 		}
+	}
+
+	private async deleteBrokenSelected(): Promise<void> {
+		const targets = this.items.filter(
+			(i) => i.broken && this.selected.has(i.file.path),
+		);
+		if (targets.length === 0) return;
+		let failed = 0;
+		for (const item of targets) {
+			try {
+				await this.app.fileManager.trashFile(item.file);
+				this.selected.delete(item.file.path);
+			} catch {
+				failed++;
+			}
+		}
+		if (failed > 0) new Notice(`${failed} deletion${failed === 1 ? "" : "s"} failed.`);
 	}
 
 	private moveToCategory(item: BookmarkItem): void {
