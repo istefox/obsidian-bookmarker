@@ -24,6 +24,8 @@ export interface BookmarkerSettings {
 	brokenFolderName: string;
 	brokenDefaultRemediation: "wayback" | "move" | "mark";
 	cardSize: "small" | "medium" | "large";
+	/** Card ordering: by added date, modified date, or title ascending/descending. */
+	sortMode: "added" | "modified" | "az" | "za";
 	/** Per-category color + icon for the category landing tiles, keyed by folder name ("" = Uncategorized). */
 	categoryStyles: Record<string, { color: string; icon: string }>;
 }
@@ -49,6 +51,7 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	brokenFolderName: "_broken",
 	brokenDefaultRemediation: "mark",
 	cardSize: "medium",
+	sortMode: "added",
 	categoryStyles: {},
 };
 
