@@ -44,6 +44,8 @@ interface BookmarkItem {
 	domain: string;
 	folder: string;
 	created: string;
+	/** File modification time (ms epoch), for the "Modified" sort. */
+	modified: number;
 	type: string;
 	favorite: boolean;
 	broken: boolean;
@@ -362,6 +364,7 @@ export class BookmarkView extends ItemView {
 				domain: asString(fm.domain),
 				folder: parent.startsWith(prefix) ? parent.slice(prefix.length) : "",
 				created: asString(fm.created),
+				modified: file.stat.mtime,
 				type: asString(fm.type) || "link",
 				favorite: fm.favorite === true,
 				broken: fm.broken === true,
@@ -515,6 +518,24 @@ export class BookmarkView extends ItemView {
 				size === "small" || size === "large" ? size : "medium";
 			void this.plugin.saveSettings();
 			this.applyCardSize();
+		});
+
+		const sortSel = toolbar.createEl("select", { cls: "bookmarker-sort-select" });
+		for (const [value, label] of [
+			["added", "Added"],
+			["modified", "Modified"],
+			["az", "A → Z"],
+			["za", "Z → A"],
+		] as const) {
+			sortSel.createEl("option", { value, text: label });
+		}
+		sortSel.value = this.plugin.settings.sortMode;
+		sortSel.addEventListener("change", () => {
+			const mode = sortSel.value;
+			this.plugin.settings.sortMode =
+				mode === "modified" || mode === "az" || mode === "za" ? mode : "added";
+			void this.plugin.saveSettings();
+			this.renderGrid();
 		});
 
 		const refresh = toolbar.createEl("button", {
@@ -693,7 +714,7 @@ export class BookmarkView extends ItemView {
 		if (this.relatedTo) return this.relatedItems(this.relatedTo);
 		// Fuzzy match (typo/word-order tolerant) over title, domain, url, tags, description.
 		const matcher = this.search ? prepareFuzzySearch(this.search) : null;
-		return this.items.filter((item) => {
+		const result = this.items.filter((item) => {
 			// Category scope: constrain to the entered category unless scope is global.
 			if (
 				this.searchScope === "category" &&
@@ -716,6 +737,23 @@ export class BookmarkView extends ItemView {
 			if (matcher && !matcher(haystack(item))) return false;
 			return true;
 		});
+		return this.sortItems(result);
+	}
+
+	/** Order the cards by the chosen sort mode (added/modified date, or title A–Z/Z–A). */
+	private sortItems(items: BookmarkItem[]): BookmarkItem[] {
+		const byTitle = (a: BookmarkItem, b: BookmarkItem): number =>
+			a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+		switch (this.plugin.settings.sortMode) {
+			case "modified":
+				return items.sort((a, b) => b.modified - a.modified);
+			case "az":
+				return items.sort(byTitle);
+			case "za":
+				return items.sort((a, b) => byTitle(b, a));
+			default:
+				return items.sort((a, b) => b.created.localeCompare(a.created));
+		}
 	}
 
 	/** Bookmarks related to the source, ranked by shared tags, then domain, then type. */
