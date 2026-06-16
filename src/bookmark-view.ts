@@ -194,16 +194,28 @@ export class BookmarkView extends ItemView {
 
 	/** Minimum grid column width for the chosen card size. */
 	private cardMin(): string {
-		return this.plugin.settings.cardSize === "small"
-			? "160px"
-			: this.plugin.settings.cardSize === "large"
-				? "300px"
-				: "220px";
+		return this.sizeVars()["--bm-card-min"];
 	}
 
-	/** Drive the grid's minimum column width from the chosen card size. */
+	/** Grid CSS variables for the chosen card size: column width plus title/tag scale. */
+	private sizeVars(): Record<string, string> {
+		switch (this.plugin.settings.cardSize) {
+			case "small":
+				return { "--bm-card-min": "160px", "--bm-card-title": "0.85em", "--bm-card-tag": "0.7em" };
+			case "large":
+				return { "--bm-card-min": "300px", "--bm-card-title": "1.2em", "--bm-card-tag": "0.85em" };
+			default:
+				return {
+					"--bm-card-min": "220px",
+					"--bm-card-title": "1em",
+					"--bm-card-tag": "var(--font-ui-smaller)",
+				};
+		}
+	}
+
+	/** Drive the grid's column width and title/tag scale from the chosen card size. */
 	private applyCardSize(): void {
-		this.gridEl.setCssProps({ "--bm-card-min": this.cardMin() });
+		this.gridEl.setCssProps(this.sizeVars());
 	}
 
 	/**
@@ -214,6 +226,19 @@ export class BookmarkView extends ItemView {
 	private renderCategories(): void {
 		const header = this.contentEl.createDiv({ cls: "bookmarker-toolbar" });
 		header.createSpan({ cls: "bookmarker-board-title", text: "Categories" });
+
+		// Switch straight to the full card grid (all bookmarks, no category scope).
+		const allCards = header.createEl("button", {
+			cls: "bookmarker-toolbar-btn",
+			text: "▦ All cards",
+		});
+		allCards.addEventListener("click", () => {
+			this.viewMode = "cards";
+			this.activeCategory = null;
+			this.searchScope = "global";
+			this.search = "";
+			this.rebuild();
+		});
 
 		const searchInput = header.createEl("input", {
 			cls: "bookmarker-search",

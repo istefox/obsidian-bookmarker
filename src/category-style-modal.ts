@@ -1,4 +1,4 @@
-import { App, Modal, Setting, setIcon } from "obsidian";
+import { App, Modal, Setting, TextComponent, setIcon } from "obsidian";
 
 interface CategoryStyleOptions {
 	/** Display name of the category ("Uncategorized" for root-level bookmarks). */
@@ -21,14 +21,75 @@ const SWATCHES = [
 ];
 
 /**
- * Pick a color and an icon for a category tile. The icon accepts either an emoji
- * or a Lucide icon name; the preview reflects whichever the field resolves to.
+ * A broad set of Lucide icon names to pick from. Names that the running Obsidian
+ * build does not ship are filtered out at render time, so the palette stays valid
+ * across versions without a hard dependency on a specific Lucide release.
+ */
+const ICON_CANDIDATES = [
+	"folder", "folder-open", "folder-heart", "folder-git-2", "file", "file-text", "files",
+	"bookmark", "book", "book-open", "library", "newspaper", "sticky-note", "clipboard",
+	"list", "list-checks", "layout-grid", "layout-list", "columns", "table",
+	"star", "heart", "flag", "tag", "tags", "hash", "bell", "inbox", "mail", "send",
+	"message-circle", "message-square", "phone", "at-sign",
+	"home", "building", "building-2", "factory", "store", "warehouse", "school",
+	"landmark", "church", "castle", "hotel",
+	"briefcase", "calendar", "calendar-days", "calendar-check", "clock", "alarm-clock",
+	"timer", "hourglass", "history",
+	"search", "filter", "settings", "sliders-horizontal", "wrench", "hammer", "cog",
+	"plug", "power",
+	"cpu", "database", "server", "hard-drive", "save", "download", "upload", "cloud",
+	"archive", "trash-2",
+	"lock", "unlock", "key", "shield", "shield-check", "eye", "eye-off", "fingerprint",
+	"camera", "image", "images", "film", "video", "clapperboard", "music", "headphones",
+	"mic", "speaker", "volume-2", "radio", "podcast", "disc",
+	"monitor", "smartphone", "tablet", "laptop", "tv", "printer", "mouse", "keyboard",
+	"gamepad-2", "joystick", "webcam",
+	"wifi", "bluetooth", "signal", "battery", "zap", "flashlight",
+	"sun", "moon", "cloud-rain", "cloud-snow", "umbrella", "snowflake", "droplet", "wind",
+	"thermometer", "sunrise", "sunset", "rainbow",
+	"leaf", "tree-pine", "trees", "flower", "sprout", "clover", "mountain", "waves",
+	"tent", "palmtree",
+	"coffee", "cup-soda", "utensils", "pizza", "beef", "salad", "apple", "cherry",
+	"ice-cream", "cookie", "wine", "beer", "martini", "candy", "cake", "croissant",
+	"egg", "fish", "carrot", "wheat",
+	"car", "bus", "train-front", "plane", "ship", "sailboat", "bike", "rocket", "fuel",
+	"anchor", "compass", "map", "map-pin", "navigation", "globe", "route", "footprints",
+	"luggage",
+	"dices", "puzzle", "swords", "trophy", "medal", "award", "target", "crosshair",
+	"dumbbell",
+	"palette", "brush", "paintbrush", "pen-tool", "pencil", "pen", "highlighter",
+	"eraser", "scissors", "ruler", "shapes", "sticker", "stamp", "type",
+	"graduation-cap", "presentation", "microscope", "telescope", "atom", "flask-conical",
+	"test-tube", "dna", "calculator", "binary", "sigma", "infinity", "brain", "lightbulb",
+	"users", "user", "user-check", "smile", "frown", "laugh", "thumbs-up", "thumbs-down",
+	"hand", "handshake", "baby", "accessibility",
+	"heart-pulse", "activity", "trending-up", "bar-chart-3", "line-chart", "pie-chart",
+	"gauge", "scale",
+	"dollar-sign", "euro", "bitcoin", "credit-card", "wallet", "banknote", "coins",
+	"piggy-bank", "receipt", "percent", "shopping-cart", "shopping-bag", "package",
+	"truck", "box", "boxes", "gift", "ticket",
+	"github", "git-branch", "git-merge", "git-pull-request", "code", "terminal", "braces",
+	"bug", "command", "container", "blocks", "component", "webhook", "qr-code",
+	"link", "external-link", "share-2", "rss", "paperclip",
+	"flame", "sparkles", "party-popper", "gem", "crown", "diamond", "feather", "ghost",
+	"skull", "bot",
+	"shirt", "glasses", "watch", "dog", "cat", "bird", "rabbit", "turtle", "snail",
+	"pill", "stethoscope", "syringe", "bandage", "cross", "heart-handshake",
+	"axe", "pickaxe", "shovel",
+];
+
+/**
+ * Pick a color and an icon for a category tile. The icon can be chosen from the
+ * built-in palette or typed directly (an emoji or any Lucide name); the preview
+ * reflects whichever the field resolves to.
  */
 export class CategoryStyleModal extends Modal {
 	private readonly opts: CategoryStyleOptions;
 	private color: string;
 	private icon: string;
 	private previewEl: HTMLElement | null = null;
+	private iconInput: TextComponent | null = null;
+	private paletteEl: HTMLElement | null = null;
 
 	constructor(app: App, opts: CategoryStyleOptions) {
 		super(app);
@@ -47,14 +108,16 @@ export class CategoryStyleModal extends Modal {
 
 		new Setting(contentEl)
 			.setName("Icon")
-			.setDesc("An emoji or a Lucide icon name (e.g. shopping-cart).")
+			.setDesc("Pick one below, or type an emoji or a Lucide icon name.")
 			.addText((text) => {
+				this.iconInput = text;
 				text
 					.setPlaceholder("🛒 or shopping-cart")
 					.setValue(this.icon)
 					.onChange((value) => {
 						this.icon = value.trim();
 						this.updatePreview();
+						this.markSelectedIcon();
 					});
 			});
 
@@ -87,6 +150,14 @@ export class CategoryStyleModal extends Modal {
 			this.updatePreview();
 		});
 
+		const filter = contentEl.createEl("input", {
+			cls: "bookmarker-icon-filter",
+			attr: { type: "search", placeholder: "Filter icons…" },
+		});
+		this.paletteEl = contentEl.createDiv({ cls: "bookmarker-icon-palette" });
+		this.buildPalette("");
+		filter.addEventListener("input", () => this.buildPalette(filter.value.toLowerCase().trim()));
+
 		new Setting(contentEl)
 			.addButton((button) =>
 				button
@@ -108,6 +179,39 @@ export class CategoryStyleModal extends Modal {
 
 	onClose(): void {
 		this.contentEl.empty();
+	}
+
+	/** Render the icon palette, skipping names the running Lucide build does not provide. */
+	private buildPalette(needle: string): void {
+		const palette = this.paletteEl;
+		if (!palette) return;
+		palette.empty();
+		for (const name of ICON_CANDIDATES) {
+			if (needle && !name.includes(needle)) continue;
+			const option = palette.createSpan({
+				cls: "bookmarker-icon-option",
+				attr: { "aria-label": name, title: name },
+			});
+			setIcon(option, name);
+			if (!option.querySelector("svg")) {
+				option.remove();
+				continue;
+			}
+			if (name === this.icon) option.addClass("is-selected");
+			option.addEventListener("click", () => {
+				this.icon = name;
+				this.iconInput?.setValue(name);
+				this.updatePreview();
+				this.markSelectedIcon();
+			});
+		}
+	}
+
+	/** Sync the palette highlight with the current icon value. */
+	private markSelectedIcon(): void {
+		this.paletteEl?.querySelectorAll(".bookmarker-icon-option").forEach((el) => {
+			el.toggleClass("is-selected", el.getAttr("aria-label") === this.icon);
+		});
 	}
 
 	/** Render the chosen icon (Lucide or emoji) tinted with the chosen color. */
