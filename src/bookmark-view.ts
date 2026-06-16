@@ -18,6 +18,9 @@ import { RegenerateTagsModal } from "./regenerate-tags-modal";
 import { appendNote, ensureFolder, sanitizeFolderPath } from "./note-writer";
 import { AnnotateModal } from "./annotate-modal";
 import { normalizeTags } from "./tags";
+import { ManageTagModal } from "./manage-tag-modal";
+import { changeTagEverywhere, countTagUsage } from "./tag-ops";
+import { refreshBookmarkCard } from "./refresh-card";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
@@ -50,9 +53,14 @@ export class BookmarkView extends ItemView {
 	private typeFilter = "";
 	private favoritesOnly = false;
 	private brokenOnly = false;
+	/** Whether the (potentially large) tag filter panel is expanded. */
+	private tagsExpanded = false;
+	/** Tag panel sort order: by assignment count (default) or alphabetical. */
+	private tagSort: "count" | "alpha" = "count";
 	/** Paths of cards the user has ticked for a bulk Organize command. */
 	private readonly selected = new Set<string>();
 	private gridEl!: HTMLElement;
+	private tagSectionEl!: HTMLElement;
 	private countEl!: HTMLElement;
 
 	constructor(leaf: WorkspaceLeaf, plugin: BookmarkerPlugin) {
@@ -288,23 +296,133 @@ export class BookmarkView extends ItemView {
 
 		this.countEl = toolbar.createSpan({ cls: "bookmarker-count" });
 
-		const allTags: string[] = [];
-		for (const item of this.items) allTags.push(...item.tags);
-		const tags = unique(allTags).sort();
-		if (tags.length) {
-			const tagBar = this.contentEl.createDiv({ cls: "bookmarker-tag-filter" });
-			for (const tag of tags) {
-				const chip = tagBar.createSpan({ cls: "bookmarker-tag-chip", text: tag });
+		this.tagSectionEl = this.contentEl.createDiv({ cls: "bookmarker-tag-section" });
+		this.renderTagSection();
+	}
+
+	/**
+	 * Tag filter, collapsed by default so it never buries the cards. Expanding shows a
+	 * height-capped, scrollable panel of tags sorted by frequency, with an in-panel
+	 * filter input. Re-renders in place (no full rebuild) so it keeps the selection.
+	 */
+	private renderTagSection(): void {
+		this.tagSectionEl.empty();
+
+		const counts = new Map<string, number>();
+		for (const item of this.items) {
+			for (const tag of item.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+		}
+		const tags = [...counts.keys()].sort((a, b) =>
+			this.tagSort === "alpha"
+				? a.localeCompare(b)
+				: (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b),
+		);
+		if (tags.length === 0) return;
+
+		const header = this.tagSectionEl.createDiv({ cls: "bookmarker-tag-header" });
+		const toggle = header.createSpan({
+			cls: "bookmarker-tag-toggle",
+			text: `${this.tagsExpanded ? "▾" : "▸"} Tags (${tags.length})`,
+		});
+		toggle.addEventListener("click", () => {
+			this.tagsExpanded = !this.tagsExpanded;
+			this.renderTagSection();
+		});
+
+		// When expanded, offer a sort order: by assignment count or alphabetical.
+		if (this.tagsExpanded) {
+			const sort = header.createEl("select", { cls: "bookmarker-tag-sort" });
+			sort.createEl("option", { value: "count", text: "Most used" });
+			sort.createEl("option", { value: "alpha", text: "A–Z" });
+			sort.value = this.tagSort;
+			sort.addEventListener("change", () => {
+				this.tagSort = sort.value === "alpha" ? "alpha" : "count";
+				this.renderTagSection();
+			});
+		}
+
+		// When collapsed, surface the active tag so the filter stays visible.
+		if (!this.tagsExpanded && this.tagFilter) {
+			const active = header.createSpan({
+				cls: "bookmarker-tag-chip bookmarker-tag-active",
+				text: `${this.tagFilter} ✕`,
+			});
+			active.addEventListener("click", () => {
+				this.tagFilter = "";
+				this.renderTagSection();
+				this.renderGrid();
+			});
+		}
+
+		if (!this.tagsExpanded) return;
+
+		const search = this.tagSectionEl.createEl("input", {
+			cls: "bookmarker-tag-search",
+			attr: { type: "search", placeholder: "Filter tags…" },
+		});
+		const panel = this.tagSectionEl.createDiv({ cls: "bookmarker-tag-filter" });
+		const draw = (needle: string): void => {
+			panel.empty();
+			const shown = needle
+				? tags.filter((t) => t.toLowerCase().includes(needle))
+				: tags;
+			for (const tag of shown) {
+				const chip = panel.createSpan({
+					cls: "bookmarker-tag-chip",
+					text: `${tag} (${counts.get(tag) ?? 0})`,
+				});
 				if (tag === this.tagFilter) chip.addClass("bookmarker-tag-active");
 				chip.addEventListener("click", () => {
 					this.tagFilter = this.tagFilter === tag ? "" : tag;
-					tagBar
+					panel
 						.querySelectorAll(".bookmarker-tag-chip")
 						.forEach((el) => el.removeClass("bookmarker-tag-active"));
 					if (this.tagFilter) chip.addClass("bookmarker-tag-active");
 					this.renderGrid();
 				});
+				chip.addEventListener("contextmenu", (event) => {
+					event.preventDefault();
+					this.manageTag(tag);
+				});
 			}
+		};
+		draw("");
+		search.addEventListener("input", () => draw(search.value.toLowerCase().trim()));
+	}
+
+	/** Right-click a tag: replace it everywhere with another, or delete it everywhere. */
+	private manageTag(tag: string): void {
+		const usage = countTagUsage(this.app, this.plugin.settings, tag);
+		new ManageTagModal(this.app, {
+			tag,
+			usage,
+			onReplace: (replacement) => this.applyTagChange(tag, replacement),
+			onDelete: () => this.applyTagChange(tag, null),
+		}).open();
+	}
+
+	private async applyTagChange(oldTag: string, replacement: string | null): Promise<void> {
+		try {
+			const changed = await changeTagEverywhere(
+				this.app,
+				this.plugin.settings,
+				oldTag,
+				replacement,
+			);
+			// Keep the active filter coherent with the rename/removal.
+			if (this.tagFilter.toLowerCase() === oldTag.toLowerCase()) {
+				this.tagFilter = replacement ?? "";
+			}
+			new Notice(
+				replacement
+					? `Renamed "${oldTag}" → "${replacement}" on ${changed} bookmark(s).`
+					: `Removed "${oldTag}" from ${changed} bookmark(s).`,
+			);
+			// Rebuild so the tag panel drops/updates the affected chip.
+			this.rebuild();
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			new Notice(`Tag update failed: ${msg}`);
 		}
 	}
 
@@ -461,6 +579,12 @@ export class BookmarkView extends ItemView {
 				.setTitle("Show related")
 				.setIcon("layers")
 				.onClick(() => this.showRelated(item)),
+		);
+		menu.addItem((i) =>
+			i
+				.setTitle("Refresh card")
+				.setIcon("refresh-cw")
+				.onClick(() => void refreshBookmarkCard(this.plugin, item.file)),
 		);
 		menu.addItem((i) =>
 			i
