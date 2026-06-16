@@ -215,13 +215,17 @@
 
 .bookmarker-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(var(--bm-card-min, 220px), 1fr));
 	gap: var(--size-4-3);
 }
 
 .bookmarker-card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
+	/* Small strip of card background above the cover so the checkbox and star
+	   aren't glued to the image's top edge. */
+	padding-top: 10px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	overflow: hidden;
