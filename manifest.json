@@ -1,7 +1,7 @@
 {
 	"id": "bookmarker",
 	"name": "Bookmarker",
-	"version": "0.1.20",
+	"version": "0.1.21",
 	"minAppVersion": "1.7.2",
 	"description": "Capture web URLs as Markdown bookmarks in your vault, with og:image preview, AI-proposed tags, and AI-proposed destination subfolder.",
 	"author": "Stefano Ferri",
