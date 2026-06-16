@@ -49,6 +49,7 @@ interface BookmarkItem {
 	type: string;
 	favorite: boolean;
 	broken: boolean;
+	hidden: boolean;
 	description: string;
 }
 
@@ -64,6 +65,7 @@ export class BookmarkView extends ItemView {
 	private typeFilter = "";
 	private favoritesOnly = false;
 	private brokenOnly = false;
+	private showHidden = false;
 	/** Landing shows category tiles; entering one switches to the card grid. */
 	private viewMode: "categories" | "cards" = "categories";
 	/** The category (folder, "" = Uncategorized) entered from a tile, else null. */
@@ -80,6 +82,7 @@ export class BookmarkView extends ItemView {
 	private tagSectionEl!: HTMLElement;
 	private countEl!: HTMLElement;
 	private deleteBrokenBtn!: HTMLButtonElement;
+	private hideSelectedBtn!: HTMLButtonElement;
 
 	constructor(leaf: WorkspaceLeaf, plugin: BookmarkerPlugin) {
 		super(leaf);
@@ -276,6 +279,7 @@ export class BookmarkView extends ItemView {
 
 		const counts = new Map<string, number>();
 		for (const item of this.items) {
+			if (item.hidden && !this.showHidden) continue;
 			counts.set(item.folder, (counts.get(item.folder) ?? 0) + 1);
 		}
 
@@ -370,6 +374,7 @@ export class BookmarkView extends ItemView {
 				type: asString(fm.type) || "link",
 				favorite: fm.favorite === true,
 				broken: fm.broken === true,
+				hidden: fm.hidden === true,
 				description: asString(fm.description),
 			});
 		}
@@ -480,6 +485,17 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
+		const showHiddenChip = toolbar.createSpan({
+			cls: "bookmarker-tag-chip",
+			text: "Hidden",
+		});
+		if (this.showHidden) showHiddenChip.addClass("bookmarker-tag-active");
+		showHiddenChip.addEventListener("click", () => {
+			this.showHidden = !this.showHidden;
+			showHiddenChip.toggleClass("bookmarker-tag-active", this.showHidden);
+			this.renderGrid();
+		});
+
 		const selectAll = toolbar.createEl("button", {
 			cls: "bookmarker-toolbar-btn",
 			text: "Select all",
@@ -504,6 +520,13 @@ export class BookmarkView extends ItemView {
 		});
 		deleteBrokenBtn.addEventListener("click", () => void this.deleteBrokenSelected());
 		this.deleteBrokenBtn = deleteBrokenBtn;
+
+		const hideSelectedBtn = toolbar.createEl("button", {
+			cls: "bookmarker-toolbar-btn bookmarker-hide-selected bookmarker-hidden",
+			text: "Hide selected",
+		});
+		hideSelectedBtn.addEventListener("click", () => void this.hideSelected());
+		this.hideSelectedBtn = hideSelectedBtn;
 
 		const sizeSel = toolbar.createEl("select", { cls: "bookmarker-size-select" });
 		for (const [value, label] of [
@@ -713,6 +736,10 @@ export class BookmarkView extends ItemView {
 			"bookmarker-hidden",
 			!(this.brokenOnly && this.selected.size > 0),
 		);
+		this.hideSelectedBtn.toggleClass(
+			"bookmarker-hidden",
+			this.selected.size === 0,
+		);
 		if (items.length === 0) {
 			this.gridEl.createDiv({
 				cls: "bookmarker-empty",
@@ -728,6 +755,7 @@ export class BookmarkView extends ItemView {
 		// Fuzzy match (typo/word-order tolerant) over title, domain, url, tags, description.
 		const matcher = this.search ? prepareFuzzySearch(this.search) : null;
 		const result = this.items.filter((item) => {
+			if (item.hidden && !this.showHidden) return false;
 			// Category scope: constrain to the entered category unless scope is global.
 			if (
 				this.searchScope === "category" &&
@@ -774,7 +802,11 @@ export class BookmarkView extends ItemView {
 		const srcTags = new Set(source.tags.map((t) => t.toLowerCase()));
 		const srcDomain = source.domain.toLowerCase().replace(/^www\./, "");
 		const scored = this.items
-			.filter((c) => c.file.path !== source.file.path)
+			.filter((c) => {
+				if (c.file.path === source.file.path) return false;
+				if (c.hidden && !this.showHidden) return false;
+				return true;
+			})
 			.map((c) => {
 				const sharedTags = c.tags.filter((t) => srcTags.has(t.toLowerCase())).length;
 				const cDomain = c.domain.toLowerCase().replace(/^www\./, "");
@@ -854,6 +886,10 @@ export class BookmarkView extends ItemView {
 		if (item.broken) {
 			cover.createSpan({ cls: "bookmarker-card-broken", text: "broken" });
 		}
+		if (item.hidden && this.showHidden) {
+			card.addClass("bookmarker-card--hidden");
+			cover.createSpan({ cls: "bookmarker-card-hidden-badge", text: "hidden" });
+		}
 
 		card.createDiv({ cls: "bookmarker-card-title", text: item.title });
 		if (item.domain) {
@@ -914,6 +950,12 @@ export class BookmarkView extends ItemView {
 				.setIcon("tags")
 				.onClick(() => void this.regenerateTags(item)),
 		);
+		menu.addItem((i) =>
+			i
+				.setTitle(item.hidden ? "Unhide" : "Hide")
+				.setIcon(item.hidden ? "eye" : "eye-off")
+				.onClick(() => void this.toggleHidden(item)),
+		);
 		menu.addSeparator();
 		menu.addItem((i) =>
 			i
@@ -951,6 +993,24 @@ export class BookmarkView extends ItemView {
 		}
 	}
 
+	private async toggleHidden(item: BookmarkItem): Promise<void> {
+		const next = !item.hidden;
+		try {
+			await this.app.fileManager.processFrontMatter(
+				item.file,
+				(fm: Record<string, unknown>) => {
+					if (next) fm.hidden = true;
+					else delete fm.hidden;
+				},
+			);
+			item.hidden = next;
+			this.renderGrid();
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			new Notice(`Failed to update hidden: ${msg}`);
+		}
+	}
+
 	private async deleteBrokenSelected(): Promise<void> {
 		const targets = this.items.filter(
 			(i) => i.broken && this.selected.has(i.file.path),
@@ -966,6 +1026,29 @@ export class BookmarkView extends ItemView {
 			}
 		}
 		if (failed > 0) new Notice(`${failed} deletion${failed === 1 ? "" : "s"} failed.`);
+	}
+
+	private async hideSelected(): Promise<void> {
+		const targets = this.items.filter((i) => this.selected.has(i.file.path));
+		if (targets.length === 0) return;
+		let failed = 0;
+		for (const item of targets) {
+			try {
+				await this.app.fileManager.processFrontMatter(
+					item.file,
+					(fm: Record<string, unknown>) => {
+						fm.hidden = true;
+					},
+				);
+				item.hidden = true;
+			} catch {
+				failed++;
+			}
+		}
+		this.selected.clear();
+		if (failed > 0)
+			new Notice(`${failed} bookmark${failed === 1 ? "" : "s"} could not be hidden.`);
+		this.renderGrid();
 	}
 
 	private moveToCategory(item: BookmarkItem): void {
