@@ -217,8 +217,7 @@
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(var(--bm-card-min, 220px), 1fr));
 	gap: var(--size-4-3);
-	/* Each card hugs its own content instead of stretching to the tallest in the row,
-	   so smaller sizes are genuinely shorter rather than padded with empty space. */
+	/* Cards have a fixed height per size (--bm-card-h); start keeps rows top-aligned. */
 	align-items: start;
 }
 
@@ -393,6 +392,8 @@
 	/* Small strip of card background above the cover so the checkbox and star
 	   aren't glued to the image's top edge. */
 	padding-top: 10px;
+	/* Fixed height per size so every card in a mode is identical; content clips. */
+	height: var(--bm-card-h, 320px);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	overflow: hidden;
@@ -407,7 +408,8 @@
 
 .bookmarker-card-cover {
 	position: relative;
-	aspect-ratio: 16 / 9;
+	height: var(--bm-card-cover-h, 132px);
+	flex: 0 0 auto;
 	overflow: hidden;
 	background: var(--background-primary);
 }
@@ -471,19 +473,34 @@
 	font-size: var(--bm-card-title, 1em);
 	padding: var(--size-4-2) var(--size-4-2) 0;
 	line-height: 1.3;
+	flex: 0 0 auto;
+	/* Always reserve exactly two lines so 1- and 2-line titles take the same space. */
+	height: calc(2 * 1.3em + var(--size-4-2));
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
 }
 
 .bookmarker-card-domain {
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	padding: var(--size-2-1) var(--size-4-2) 0;
+	flex: 0 0 auto;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .bookmarker-card-tags {
 	display: flex;
 	flex-wrap: wrap;
+	align-content: flex-start;
 	gap: var(--size-2-1);
 	padding: var(--size-2-2) var(--size-4-2) var(--size-4-2);
+	/* Fill the remaining space and clip extra tag rows instead of growing the card. */
+	flex: 1 1 auto;
+	overflow: hidden;
 }
 
 .bookmarker-card-tags .bookmarker-tag-chip {
