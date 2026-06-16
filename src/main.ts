@@ -122,13 +122,14 @@ export default class BookmarkerPlugin extends Plugin {
 	private async runBrokenLinkCheck(): Promise<void> {
 		const notice = new Notice("Checking links…", 0);
 		try {
-			const { checked, broken } = await checkBrokenLinks(
+			const { checked, broken, unreachable } = await checkBrokenLinks(
 				this.app,
 				this.settings,
 				(done, total) => notice.setMessage(`Checking links ${done}/${total}…`),
 			);
 			notice.hide();
-			new Notice(`Checked ${checked} bookmark(s): ${broken} broken.`);
+			const tail = unreachable ? `, ${unreachable} unreachable (unchanged)` : "";
+			new Notice(`Checked ${checked} bookmark(s): ${broken} broken${tail}.`);
 		} catch (error) {
 			notice.hide();
 			const message = error instanceof Error ? error.message : String(error);

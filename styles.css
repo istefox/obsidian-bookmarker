@@ -138,11 +138,46 @@
 	margin-left: auto;
 }
 
+.bookmarker-tag-section {
+	margin-bottom: var(--size-4-3);
+}
+
+.bookmarker-tag-header {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	margin-bottom: var(--size-2-2);
+}
+
+.bookmarker-tag-toggle {
+	cursor: pointer;
+	user-select: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.bookmarker-tag-toggle:hover {
+	color: var(--text-normal);
+}
+
+.bookmarker-tag-search {
+	width: 100%;
+	margin-bottom: var(--size-2-2);
+}
+
+.bookmarker-tag-sort {
+	font-size: var(--font-ui-smaller);
+	margin-left: auto;
+}
+
 .bookmarker-tag-filter {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--size-2-2);
-	margin-bottom: var(--size-4-3);
+	/* Cap the height so a vault with hundreds of tags never buries the cards. */
+	max-height: 8.5rem;
+	overflow-y: auto;
 }
 
 .bookmarker-tag-active {
