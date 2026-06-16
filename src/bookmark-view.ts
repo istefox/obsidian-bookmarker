@@ -197,16 +197,30 @@ export class BookmarkView extends ItemView {
 		return this.sizeVars()["--bm-card-min"];
 	}
 
-	/** Grid CSS variables for the chosen card size: column width plus title/tag scale. */
+	/** Grid CSS variables for the chosen card size: width, fixed height/cover, title/tag scale. */
 	private sizeVars(): Record<string, string> {
 		switch (this.plugin.settings.cardSize) {
 			case "small":
-				return { "--bm-card-min": "160px", "--bm-card-title": "0.85em", "--bm-card-tag": "0.7em" };
+				return {
+					"--bm-card-min": "160px",
+					"--bm-card-h": "250px",
+					"--bm-card-cover-h": "96px",
+					"--bm-card-title": "0.85em",
+					"--bm-card-tag": "0.7em",
+				};
 			case "large":
-				return { "--bm-card-min": "300px", "--bm-card-title": "1.2em", "--bm-card-tag": "0.85em" };
+				return {
+					"--bm-card-min": "300px",
+					"--bm-card-h": "380px",
+					"--bm-card-cover-h": "176px",
+					"--bm-card-title": "1.2em",
+					"--bm-card-tag": "0.85em",
+				};
 			default:
 				return {
 					"--bm-card-min": "220px",
+					"--bm-card-h": "320px",
+					"--bm-card-cover-h": "132px",
 					"--bm-card-title": "1em",
 					"--bm-card-tag": "var(--font-ui-smaller)",
 				};
