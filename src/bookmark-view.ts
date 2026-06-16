@@ -160,7 +160,19 @@ export class BookmarkView extends ItemView {
 		this.loadBookmarks();
 		this.renderToolbar();
 		this.gridEl = this.contentEl.createDiv({ cls: "bookmarker-grid" });
+		this.applyCardSize();
 		this.renderGrid();
+	}
+
+	/** Drive the grid's minimum column width from the chosen card size. */
+	private applyCardSize(): void {
+		const min =
+			this.plugin.settings.cardSize === "small"
+				? "160px"
+				: this.plugin.settings.cardSize === "large"
+					? "300px"
+					: "220px";
+		this.gridEl.setCssProps({ "--bm-card-min": min });
 	}
 
 	private loadBookmarks(): void {
@@ -292,6 +304,23 @@ export class BookmarkView extends ItemView {
 		});
 		deleteBrokenBtn.addEventListener("click", () => void this.deleteBrokenSelected());
 		this.deleteBrokenBtn = deleteBrokenBtn;
+
+		const sizeSel = toolbar.createEl("select", { cls: "bookmarker-size-select" });
+		for (const [value, label] of [
+			["small", "Small cards"],
+			["medium", "Medium cards"],
+			["large", "Large cards"],
+		] as const) {
+			sizeSel.createEl("option", { value, text: label });
+		}
+		sizeSel.value = this.plugin.settings.cardSize;
+		sizeSel.addEventListener("change", () => {
+			const size = sizeSel.value;
+			this.plugin.settings.cardSize =
+				size === "small" || size === "large" ? size : "medium";
+			void this.plugin.saveSettings();
+			this.applyCardSize();
+		});
 
 		const refresh = toolbar.createEl("button", {
 			cls: "bookmarker-toolbar-btn",
@@ -516,7 +545,9 @@ export class BookmarkView extends ItemView {
 
 		const cover = card.createDiv({ cls: "bookmarker-card-cover" });
 
-		const select = cover.createEl("input", {
+		// Checkbox and star live on the card (not the cover) so they sit in the
+		// small strip above the image instead of glued to its top edge.
+		const select = card.createEl("input", {
 			cls: "bookmarker-card-select",
 			attr: { type: "checkbox", "aria-label": "Select bookmark" },
 		});
@@ -534,7 +565,7 @@ export class BookmarkView extends ItemView {
 			cover.setText(item.domain || "No cover");
 		}
 
-		const star = cover.createSpan({
+		const star = card.createSpan({
 			cls: "bookmarker-card-star",
 			text: item.favorite ? "★" : "☆",
 		});

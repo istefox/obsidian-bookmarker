@@ -23,6 +23,7 @@ export interface BookmarkerSettings {
 	organizeBatchCap: number;
 	brokenFolderName: string;
 	brokenDefaultRemediation: "wayback" | "move" | "mark";
+	cardSize: "small" | "medium" | "large";
 }
 
 export const DEFAULT_SETTINGS: BookmarkerSettings = {
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	organizeBatchCap: 50,
 	brokenFolderName: "_broken",
 	brokenDefaultRemediation: "mark",
+	cardSize: "medium",
 };
 
 export class BookmarkerSettingTab extends PluginSettingTab {
