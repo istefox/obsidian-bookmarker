@@ -26,6 +26,8 @@ export interface BookmarkerSettings {
 	cardSize: "small" | "medium" | "large";
 	/** Card ordering: by added date, modified date, or title ascending/descending. */
 	sortMode: "added" | "modified" | "az" | "za";
+	/** Show the file name (basename) as the card title instead of the frontmatter title. */
+	useFileNameAsTitle: boolean;
 	/** Per-category color + icon for the category landing tiles, keyed by folder name ("" = Uncategorized). */
 	categoryStyles: Record<string, { color: string; icon: string }>;
 }
@@ -52,6 +54,7 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	brokenDefaultRemediation: "mark",
 	cardSize: "medium",
 	sortMode: "added",
+	useFileNameAsTitle: false,
 	categoryStyles: {},
 };
 

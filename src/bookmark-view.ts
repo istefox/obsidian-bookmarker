@@ -357,7 +357,9 @@ export class BookmarkView extends ItemView {
 			const parent = file.parent?.path ?? "";
 			items.push({
 				file,
-				title: asString(fm.title) || file.basename,
+				title: this.plugin.settings.useFileNameAsTitle
+					? file.basename
+					: asString(fm.title) || file.basename,
 				url: asString(fm.url),
 				image: asString(fm.image),
 				tags: normalizeTags(fm.tags),
@@ -536,6 +538,17 @@ export class BookmarkView extends ItemView {
 				mode === "modified" || mode === "az" || mode === "za" ? mode : "added";
 			void this.plugin.saveSettings();
 			this.renderGrid();
+		});
+
+		// Quick toggle: card title source (frontmatter title vs file name).
+		const titleSrc = toolbar.createEl("button", {
+			cls: "bookmarker-toolbar-btn",
+			text: this.plugin.settings.useFileNameAsTitle ? "Title: file name" : "Title: metadata",
+		});
+		titleSrc.addEventListener("click", () => {
+			this.plugin.settings.useFileNameAsTitle = !this.plugin.settings.useFileNameAsTitle;
+			void this.plugin.saveSettings();
+			this.rebuild();
 		});
 
 		const refresh = toolbar.createEl("button", {
