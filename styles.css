@@ -77,6 +77,16 @@
 	opacity: 1;
 }
 
+.bookmarker-tag-edit {
+	cursor: pointer;
+	opacity: 0.5;
+	font-size: var(--font-ui-smaller);
+}
+
+.bookmarker-tag-edit:hover {
+	opacity: 1;
+}
+
 .bookmarker-confidence {
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
