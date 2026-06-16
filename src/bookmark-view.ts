@@ -375,9 +375,17 @@ export class BookmarkView extends ItemView {
 				? tags.filter((t) => t.toLowerCase().includes(needle))
 				: tags;
 			for (const tag of shown) {
-				const chip = panel.createSpan({
-					cls: "bookmarker-tag-chip",
+				const chip = panel.createSpan({ cls: "bookmarker-tag-chip" });
+				chip.createSpan({
+					cls: "bookmarker-tag-label",
 					text: `${tag} (${counts.get(tag) ?? 0})`,
+				});
+				// Visible, tap-friendly rename/delete affordance (right-click is not
+				// available on mobile, which the plugin must support).
+				const edit = chip.createSpan({
+					cls: "bookmarker-tag-edit",
+					text: "✎",
+					attr: { "aria-label": "Rename or delete tag", title: "Rename or delete tag" },
 				});
 				if (tag === this.tagFilter) chip.addClass("bookmarker-tag-active");
 				chip.addEventListener("click", () => {
@@ -387,6 +395,11 @@ export class BookmarkView extends ItemView {
 						.forEach((el) => el.removeClass("bookmarker-tag-active"));
 					if (this.tagFilter) chip.addClass("bookmarker-tag-active");
 					this.renderGrid();
+				});
+				edit.addEventListener("click", (event) => {
+					// Don't let the rename tap also toggle the tag filter.
+					event.stopPropagation();
+					this.manageTag(tag);
 				});
 				chip.addEventListener("contextmenu", (event) => {
 					event.preventDefault();
