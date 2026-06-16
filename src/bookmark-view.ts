@@ -287,10 +287,9 @@ export class BookmarkView extends ItemView {
 		});
 
 		const deleteBrokenBtn = toolbar.createEl("button", {
-			cls: "bookmarker-toolbar-btn bookmarker-delete-broken",
+			cls: "bookmarker-toolbar-btn bookmarker-delete-broken bookmarker-hidden",
 			text: "Delete broken",
 		});
-		deleteBrokenBtn.style.display = "none";
 		deleteBrokenBtn.addEventListener("click", () => void this.deleteBrokenSelected());
 		this.deleteBrokenBtn = deleteBrokenBtn;
 
@@ -439,8 +438,10 @@ export class BookmarkView extends ItemView {
 		this.gridEl.empty();
 		const items = this.filtered();
 		this.countEl.setText(`${items.length} bookmark${items.length === 1 ? "" : "s"}`);
-		this.deleteBrokenBtn.style.display =
-			this.brokenOnly && this.selected.size > 0 ? "" : "none";
+		this.deleteBrokenBtn.toggleClass(
+			"bookmarker-hidden",
+			!(this.brokenOnly && this.selected.size > 0),
+		);
 		if (items.length === 0) {
 			this.gridEl.createDiv({
 				cls: "bookmarker-empty",

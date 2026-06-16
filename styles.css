@@ -64,6 +64,10 @@
 	border-color: var(--background-modifier-error-hover);
 }
 
+.bookmarker-hidden {
+	display: none;
+}
+
 .bookmarker-tag-remove {
 	cursor: pointer;
 	opacity: 0.7;
