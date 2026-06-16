@@ -5,10 +5,12 @@ import {
 	Notice,
 	normalizePath,
 	prepareFuzzySearch,
+	setIcon,
 	TFile,
 	WorkspaceLeaf,
 } from "obsidian";
 import type BookmarkerPlugin from "./main";
+import { CategoryStyleModal } from "./category-style-modal";
 import { isSafeRemoteUrl } from "./url-safety";
 import { fetchHtml, parseMetadata } from "./metadata";
 import { readTaxonomy } from "./taxonomy";
@@ -25,6 +27,13 @@ import { refreshBookmarkCard } from "./refresh-card";
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
 const MAX_RELATED = 50;
+
+/** Render a category icon: a Lucide name produces an SVG, anything else (emoji) falls back to text. */
+function renderCategoryIcon(el: HTMLElement, value: string): void {
+	el.empty();
+	setIcon(el, value);
+	if (!el.querySelector("svg")) el.setText(value);
+}
 
 interface BookmarkItem {
 	file: TFile;
@@ -53,6 +62,12 @@ export class BookmarkView extends ItemView {
 	private typeFilter = "";
 	private favoritesOnly = false;
 	private brokenOnly = false;
+	/** Landing shows category tiles; entering one switches to the card grid. */
+	private viewMode: "categories" | "cards" = "categories";
+	/** The category (folder, "" = Uncategorized) entered from a tile, else null. */
+	private activeCategory: string | null = null;
+	/** When inside a category, whether search/filters span all bookmarks or just that category. */
+	private searchScope: "global" | "category" = "category";
 	/** Whether the (potentially large) tag filter panel is expanded. */
 	private tagsExpanded = false;
 	/** Tag panel sort order: by assignment count (default) or alphabetical. */
@@ -122,6 +137,13 @@ export class BookmarkView extends ItemView {
 		// explicit rebuild (Refresh button, filter/domain/related change). Stale paths
 		// are harmless: getSelectedFiles() resolves against the current item set.
 		this.loadBookmarks();
+		// The category landing has no grid/selection to preserve; redraw it in place.
+		if (this.viewMode === "categories" && !this.domainFilter && !this.relatedTo) {
+			this.contentEl.empty();
+			this.contentEl.addClass("bookmarker-board");
+			this.renderCategories();
+			return;
+		}
 		// Leave related mode if its source bookmark was deleted.
 		const related = this.relatedTo;
 		if (related && !this.items.some((i) => i.file.path === related.file.path)) {
@@ -139,6 +161,7 @@ export class BookmarkView extends ItemView {
 	/** Filter the board to a single domain (www-insensitive) and redraw. */
 	filterByDomain(domain: string): void {
 		this.domainFilter = domain.toLowerCase().replace(/^www\./, "");
+		this.viewMode = "cards";
 		this.rebuild();
 	}
 
@@ -152,27 +175,134 @@ export class BookmarkView extends ItemView {
 		return this.filtered().map((i) => i.file);
 	}
 
-	/** Full rebuild: re-scan the vault and redraw toolbar + grid. */
+	/** Full rebuild: re-scan the vault and redraw the active view (categories or cards). */
 	private rebuild(): void {
 		this.selected.clear();
 		this.contentEl.empty();
 		this.contentEl.addClass("bookmarker-board");
 		this.loadBookmarks();
+		// Domain/related drilldowns are inherently card views; force cards mode for them.
+		if (this.viewMode === "categories" && !this.domainFilter && !this.relatedTo) {
+			this.renderCategories();
+			return;
+		}
 		this.renderToolbar();
 		this.gridEl = this.contentEl.createDiv({ cls: "bookmarker-grid" });
 		this.applyCardSize();
 		this.renderGrid();
 	}
 
+	/** Minimum grid column width for the chosen card size. */
+	private cardMin(): string {
+		return this.plugin.settings.cardSize === "small"
+			? "160px"
+			: this.plugin.settings.cardSize === "large"
+				? "300px"
+				: "220px";
+	}
+
 	/** Drive the grid's minimum column width from the chosen card size. */
 	private applyCardSize(): void {
-		const min =
-			this.plugin.settings.cardSize === "small"
-				? "160px"
-				: this.plugin.settings.cardSize === "large"
-					? "300px"
-					: "220px";
-		this.gridEl.setCssProps({ "--bm-card-min": min });
+		this.gridEl.setCssProps({ "--bm-card-min": this.cardMin() });
+	}
+
+	/**
+	 * Category landing: a tile per subfolder of the root ("" = Uncategorized), so the board
+	 * opens without loading every card. Each tile carries a customizable color and icon and
+	 * drills into the cards view scoped to that category.
+	 */
+	private renderCategories(): void {
+		const header = this.contentEl.createDiv({ cls: "bookmarker-toolbar" });
+		header.createSpan({ cls: "bookmarker-board-title", text: "Categories" });
+
+		const searchInput = header.createEl("input", {
+			cls: "bookmarker-search",
+			attr: { type: "search", placeholder: "Search all bookmarks…" },
+		});
+		// Searching from the landing drops straight into a global card view.
+		searchInput.addEventListener("input", () => {
+			const query = searchInput.value.toLowerCase().trim();
+			if (!query) return;
+			this.search = query;
+			this.searchScope = "global";
+			this.activeCategory = null;
+			this.viewMode = "cards";
+			this.rebuild();
+		});
+
+		const refresh = header.createEl("button", { cls: "bookmarker-toolbar-btn", text: "Refresh" });
+		refresh.addEventListener("click", () => this.rebuild());
+
+		const counts = new Map<string, number>();
+		for (const item of this.items) {
+			counts.set(item.folder, (counts.get(item.folder) ?? 0) + 1);
+		}
+
+		const grid = this.contentEl.createDiv({ cls: "bookmarker-category-grid" });
+		grid.setCssProps({ "--bm-card-min": this.cardMin() });
+		if (counts.size === 0) {
+			grid.createDiv({
+				cls: "bookmarker-empty",
+				text: this.items.length ? "No categories." : "No bookmarks yet.",
+			});
+			return;
+		}
+
+		// Named categories alphabetically; Uncategorized ("") always last.
+		const categories = [...counts.keys()].sort(
+			(a, b) => Number(a === "") - Number(b === "") || a.localeCompare(b),
+		);
+		for (const category of categories) {
+			this.renderCategoryTile(grid, category, counts.get(category) ?? 0);
+		}
+	}
+
+	private renderCategoryTile(grid: HTMLElement, category: string, count: number): void {
+		const style = this.plugin.settings.categoryStyles[category] ?? { color: "", icon: "" };
+		const tile = grid.createDiv({ cls: "bookmarker-category-tile" });
+		if (style.color) tile.setCssProps({ "--bm-cat-color": style.color });
+
+		const iconEl = tile.createSpan({ cls: "bookmarker-category-icon" });
+		renderCategoryIcon(iconEl, style.icon || "folder");
+
+		const body = tile.createDiv({ cls: "bookmarker-category-body" });
+		body.createDiv({ cls: "bookmarker-category-name", text: category || "Uncategorized" });
+		body.createDiv({
+			cls: "bookmarker-category-count",
+			text: `${count} bookmark${count === 1 ? "" : "s"}`,
+		});
+
+		const edit = tile.createSpan({
+			cls: "bookmarker-category-edit",
+			text: "✎",
+			attr: { "aria-label": "Edit category color and icon", title: "Edit category color and icon" },
+		});
+		edit.addEventListener("click", (event) => {
+			event.stopPropagation();
+			this.editCategoryStyle(category);
+		});
+
+		tile.addEventListener("click", () => {
+			this.activeCategory = category;
+			this.searchScope = "category";
+			this.viewMode = "cards";
+			this.rebuild();
+		});
+	}
+
+	private editCategoryStyle(category: string): void {
+		const current = this.plugin.settings.categoryStyles[category] ?? { color: "", icon: "" };
+		new CategoryStyleModal(this.app, {
+			category: category || "Uncategorized",
+			color: current.color,
+			icon: current.icon,
+			onSave: (color, icon) => {
+				if (!color && !icon) delete this.plugin.settings.categoryStyles[category];
+				else this.plugin.settings.categoryStyles[category] = { color, icon };
+				void this.plugin.saveSettings();
+				this.rebuild();
+			},
+		}).open();
 	}
 
 	private loadBookmarks(): void {
@@ -205,6 +335,32 @@ export class BookmarkView extends ItemView {
 
 	private renderToolbar(): void {
 		const toolbar = this.contentEl.createDiv({ cls: "bookmarker-toolbar" });
+
+		const back = toolbar.createEl("button", {
+			cls: "bookmarker-toolbar-btn",
+			text: "← Categories",
+		});
+		back.addEventListener("click", () => {
+			this.viewMode = "categories";
+			this.activeCategory = null;
+			this.domainFilter = "";
+			this.relatedTo = null;
+			this.search = "";
+			this.rebuild();
+		});
+
+		// Scope toggle: search/filter within the entered category, or across all bookmarks.
+		if (this.activeCategory !== null) {
+			const label = this.activeCategory || "Uncategorized";
+			const scopeSel = toolbar.createEl("select", { cls: "bookmarker-scope-select" });
+			scopeSel.createEl("option", { value: "category", text: `In "${label}"` });
+			scopeSel.createEl("option", { value: "global", text: "All bookmarks" });
+			scopeSel.value = this.searchScope;
+			scopeSel.addEventListener("change", () => {
+				this.searchScope = scopeSel.value === "global" ? "global" : "category";
+				this.renderGrid();
+			});
+		}
 
 		if (this.domainFilter) {
 			const chip = toolbar.createSpan({
@@ -499,6 +655,14 @@ export class BookmarkView extends ItemView {
 		// Fuzzy match (typo/word-order tolerant) over title, domain, url, tags, description.
 		const matcher = this.search ? prepareFuzzySearch(this.search) : null;
 		return this.items.filter((item) => {
+			// Category scope: constrain to the entered category unless scope is global.
+			if (
+				this.searchScope === "category" &&
+				this.activeCategory !== null &&
+				item.folder !== this.activeCategory
+			) {
+				return false;
+			}
 			if (
 				this.domainFilter &&
 				item.domain.toLowerCase().replace(/^www\./, "") !== this.domainFilter
@@ -673,6 +837,7 @@ export class BookmarkView extends ItemView {
 	/** Enter related mode: the board shows the bookmarks related to this one. */
 	private showRelated(item: BookmarkItem): void {
 		this.relatedTo = item;
+		this.viewMode = "cards";
 		this.rebuild();
 	}
 
