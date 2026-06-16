@@ -1,6 +1,6 @@
 {
   "name": "bookmarker",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "Capture web URLs as Markdown bookmarks in your Obsidian vault, with og:image preview, AI-proposed tags, and AI-proposed destination subfolder.",
   "main": "main.js",
   "scripts": {
