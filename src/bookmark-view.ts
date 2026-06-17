@@ -23,6 +23,7 @@ import { normalizeTags } from "./tags";
 import { ManageTagModal } from "./manage-tag-modal";
 import { changeTagEverywhere, countTagUsage } from "./tag-ops";
 import { refreshBookmarkCard } from "./refresh-card";
+import { hashPassword, PasswordPromptModal } from "./password-modal";
 
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
@@ -66,6 +67,8 @@ export class BookmarkView extends ItemView {
 	private favoritesOnly = false;
 	private brokenOnly = false;
 	private showHidden = false;
+	/** Per-session unlock for the password-gated Hidden toggle; resets on each new board. */
+	private hiddenUnlocked = false;
 	/** Landing shows category tiles; entering one switches to the card grid. */
 	private viewMode: "categories" | "cards" = "categories";
 	/** The category (folder, "" = Uncategorized) entered from a tile, else null. */
@@ -491,9 +494,30 @@ export class BookmarkView extends ItemView {
 		});
 		if (this.showHidden) showHiddenChip.addClass("bookmarker-tag-active");
 		showHiddenChip.addEventListener("click", () => {
-			this.showHidden = !this.showHidden;
-			showHiddenChip.toggleClass("bookmarker-tag-active", this.showHidden);
-			this.renderGrid();
+			const lockHash = this.plugin.settings.hiddenLockHash;
+			// Turning off, no lock, or already unlocked this session → toggle directly.
+			if (this.showHidden || !lockHash || this.hiddenUnlocked) {
+				this.showHidden = !this.showHidden;
+				showHiddenChip.toggleClass("bookmarker-tag-active", this.showHidden);
+				this.renderGrid();
+				return;
+			}
+			// Locked and turning on → require the password first.
+			new PasswordPromptModal(this.app, (entered) => {
+				void (async () => {
+					try {
+						if ((await hashPassword(entered)) !== lockHash) {
+							new Notice("Incorrect password.");
+							return;
+						}
+						this.hiddenUnlocked = true;
+						this.showHidden = true;
+						this.renderGrid();
+					} catch {
+						new Notice("Could not verify password.");
+					}
+				})();
+			}).open();
 		});
 
 		const selectAll = toolbar.createEl("button", {
