@@ -2,6 +2,7 @@ import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { testClaudeConnection } from "./classifier";
 import { testRaindropToken } from "./raindrop";
+import { hashPassword, SetPasswordModal } from "./password-modal";
 
 export interface BookmarkerSettings {
 	anthropicApiKey: string;
@@ -30,6 +31,8 @@ export interface BookmarkerSettings {
 	useFileNameAsTitle: boolean;
 	/** Per-category color + icon for the category landing tiles, keyed by folder name ("" = Uncategorized). */
 	categoryStyles: Record<string, { color: string; icon: string }>;
+	/** SHA-256 hex of the soft-lock password for the Hidden toggle ("" / null = no lock). Not encryption. */
+	hiddenLockHash: string | null;
 }
 
 export const DEFAULT_SETTINGS: BookmarkerSettings = {
@@ -56,6 +59,7 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	sortMode: "added",
 	useFileNameAsTitle: false,
 	categoryStyles: {},
+	hiddenLockHash: null,
 };
 
 export class BookmarkerSettingTab extends PluginSettingTab {
@@ -415,5 +419,59 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 						button.setButtonText("Test").setDisabled(false);
 					}),
 			);
+
+		new Setting(containerEl).setName("Hidden cards").setHeading();
+
+		const lockSection = containerEl.createDiv();
+		const renderLockSection = (): void => {
+			lockSection.empty();
+			if (this.plugin.settings.hiddenLockHash) {
+				new Setting(lockSection)
+					.setName("Password")
+					.setDesc(
+						"A password is set; the Hidden toggle asks for it before revealing hidden cards. " +
+							"Soft lock only, not encryption: the notes stay readable as Markdown files in your vault.",
+					)
+					.addButton((button) =>
+						button.setButtonText("Change").onClick(() => this.promptSetPassword(renderLockSection)),
+					)
+					.addButton((button) =>
+						button.setButtonText("Remove").onClick(() => {
+							this.plugin.settings.hiddenLockHash = null;
+							void this.plugin.saveSettings();
+							renderLockSection();
+						}),
+					);
+			} else {
+				new Setting(lockSection)
+					.setName("Password")
+					.setDesc(
+						"Optional: require a password before the Hidden toggle reveals hidden cards. " +
+							"Soft lock only, not encryption: the notes stay readable as Markdown files in your vault.",
+					)
+					.addButton((button) =>
+						button
+							.setButtonText("Set password")
+							.setCta()
+							.onClick(() => this.promptSetPassword(renderLockSection)),
+					);
+			}
+		};
+		renderLockSection();
+	}
+
+	private promptSetPassword(refresh: () => void): void {
+		new SetPasswordModal(this.app, (password) => {
+			void (async () => {
+				try {
+					this.plugin.settings.hiddenLockHash = await hashPassword(password);
+					await this.plugin.saveSettings();
+					new Notice("Hidden cards password set.");
+					refresh();
+				} catch {
+					new Notice("Could not set password.");
+				}
+			})();
+		}).open();
 	}
 }
