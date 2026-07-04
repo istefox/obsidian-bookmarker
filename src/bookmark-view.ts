@@ -4,7 +4,6 @@ import {
 	Menu,
 	Notice,
 	normalizePath,
-	prepareFuzzySearch,
 	setIcon,
 	TFile,
 	WorkspaceLeaf,
@@ -776,8 +775,9 @@ export class BookmarkView extends ItemView {
 
 	private filtered(): BookmarkItem[] {
 		if (this.relatedTo) return this.relatedItems(this.relatedTo);
-		// Fuzzy match (typo/word-order tolerant) over title, domain, url, tags, description.
-		const matcher = this.search ? prepareFuzzySearch(this.search) : null;
+		// Substring token AND: every whitespace-separated word must appear (case-insensitive)
+		// in the item's searchable text. Predictable and word-order independent.
+		const terms = this.search ? this.search.split(/\s+/).filter(Boolean) : [];
 		const result = this.items.filter((item) => {
 			if (item.hidden && !this.showHidden) return false;
 			// Category scope: constrain to the entered category unless scope is global.
@@ -799,7 +799,10 @@ export class BookmarkView extends ItemView {
 			if (this.favoritesOnly && !item.favorite) return false;
 			if (this.brokenOnly && !item.broken) return false;
 			if (this.tagFilter && !item.tags.includes(this.tagFilter)) return false;
-			if (matcher && !matcher(haystack(item))) return false;
+			if (terms.length) {
+				const text = haystack(item).toLowerCase();
+				if (!terms.every((term) => text.includes(term))) return false;
+			}
 			return true;
 		});
 		return this.sortItems(result);
