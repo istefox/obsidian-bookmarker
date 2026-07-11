@@ -274,6 +274,11 @@ export class BookmarkView extends ItemView {
 			this.activeCategory = null;
 			this.viewMode = "cards";
 			this.rebuild();
+			// rebuild() swaps in the toolbar's search input; carry focus and cursor there
+			// so the user can keep typing instead of having to click back in.
+			const newSearchInput = this.contentEl.querySelector<HTMLInputElement>(".bookmarker-search");
+			newSearchInput?.focus();
+			newSearchInput?.setSelectionRange(newSearchInput.value.length, newSearchInput.value.length);
 		});
 
 		const refresh = header.createEl("button", { cls: "bookmarker-toolbar-btn", text: "Refresh" });
@@ -439,6 +444,7 @@ export class BookmarkView extends ItemView {
 			cls: "bookmarker-search",
 			attr: { type: "search", placeholder: "Search bookmarks…" },
 		});
+		searchInput.value = this.search;
 		searchInput.addEventListener("input", () => {
 			this.search = searchInput.value.toLowerCase().trim();
 			this.renderGrid();
