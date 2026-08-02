@@ -4,6 +4,12 @@ Save any web page into your Obsidian vault as a clean Markdown note, with a prev
 
 The goal is a Raindrop-style bookmarking experience that lives entirely in plain Markdown files you own.
 
+## What's new
+
+**Local cover images.** A card's cover can now be an image stored in your vault rather than a remote URL. Sites like Instagram rotate their thumbnail URLs, so a saved preview eventually stops loading; a vault image does not. Right-click a card to pick one with "Set cover from vault…", or use "Save cover to vault" to download the current preview into `_bookmarks/_assets/` once and keep it. The reference is stored as a wikilink, so renaming or moving the image never breaks the card. Refreshing a card also no longer wipes a cover when the page has since dropped its `og:image`.
+
+Full notes for every version are on the [releases page](https://github.com/istefox/obsidian-bookmarker/releases).
+
 ## What it does
 
 - **One-click capture.** Save the current browser tab through a small companion extension, or trigger a capture from inside Obsidian. On iOS/iPad the same path works from the Share Sheet via an Apple Shortcut.
