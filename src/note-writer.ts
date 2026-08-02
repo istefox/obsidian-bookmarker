@@ -3,15 +3,16 @@ import { BookmarkerSettings } from "./settings";
 import { BookmarkDraft } from "./types";
 import { isSafeRemoteUrl } from "./url-safety";
 import { proxiedImage } from "./image";
+import { parseWikilink, toWikilink } from "./cover";
 
 // Standard Open Graph image ratio (1200x630). Supplied to the link-embed card so
 // the obsidian-link-embed plugin renders without re-fetching image dimensions.
 const DEFAULT_ASPECT_RATIO = 1.91;
 
 /**
- * Write a bookmark note from the final (user-confirmed) draft. The preview image
- * is rendered as an obsidian-link-embed card referencing the external image URL —
- * no local file, no asset folder. Returns the vault path of the created note.
+ * Write a bookmark note from the final (user-confirmed) draft. A remote preview image
+ * is rendered as an obsidian-link-embed card referencing the external URL; a vault
+ * image is rendered as a native embed. Returns the vault path of the created note.
  */
 export async function writeBookmarkNote(
 	app: App,
@@ -53,11 +54,11 @@ export async function ensureFolder(app: App, path: string): Promise<void> {
 }
 
 /** Readable, filesystem-safe file name, deduped against the folder with " 1", " 2". */
-function uniqueName(app: App, dir: string, name: string): string {
+export function uniqueName(app: App, dir: string, name: string, ext = "md"): string {
 	const base = sanitizeFileName(name);
 	let candidate = base;
 	let n = 1;
-	while (app.vault.getAbstractFileByPath(normalizePath(`${dir}/${candidate}.md`))) {
+	while (app.vault.getAbstractFileByPath(normalizePath(`${dir}/${candidate}.${ext}`))) {
 		candidate = `${base} ${n++}`;
 	}
 	return candidate;
@@ -79,9 +80,13 @@ export function sanitizeFileName(name: string): string {
 function buildNote(draft: BookmarkDraft, settings: BookmarkerSettings): string {
 	const title = sanitizeText(draft.title) || draft.domain || "Bookmark";
 	const description = sanitizeText(draft.description);
+	// A vault cover is a wikilink and is stored verbatim; a remote one keeps the
+	// SSRF check plus the proxy wrapper.
+	const localCover = draft.imageUrl ? parseWikilink(draft.imageUrl) : null;
 	const safeImage =
-		draft.imageUrl && isSafeRemoteUrl(draft.imageUrl) ? draft.imageUrl : "";
-	const image = safeImage ? proxiedImage(safeImage, settings.useImageProxy) : "";
+		!localCover && draft.imageUrl && isSafeRemoteUrl(draft.imageUrl) ? draft.imageUrl : "";
+	const remoteImage = safeImage ? proxiedImage(safeImage, settings.useImageProxy) : "";
+	const image = localCover ? toWikilink(localCover) : remoteImage;
 	const favicon =
 		draft.faviconUrl && isSafeRemoteUrl(draft.faviconUrl) ? draft.faviconUrl : "";
 
@@ -101,11 +106,23 @@ function buildNote(draft: BookmarkDraft, settings: BookmarkerSettings): string {
 	}).replace(/\s+$/, "");
 
 	const body: string[] = [`# ${title}`, ""];
-	if (image) {
+	if (localCover) {
+		// Local cover: a native embed. The link-embed card gets no `image` key — it
+		// cannot render a vault resource path — but still shows title/description.
+		body.push(`![[${localCover}]]`, "");
+		const card = stringifyYaml({
+			title,
+			description,
+			url: draft.url,
+			favicon,
+			aspectRatio: DEFAULT_ASPECT_RATIO,
+		}).replace(/\s+$/, "");
+		body.push("```embed", card, "```", "");
+	} else if (remoteImage) {
 		// obsidian-link-embed card: renders the image by URL (no local file).
 		const card = stringifyYaml({
 			title,
-			image,
+			image: remoteImage,
 			description,
 			url: draft.url,
 			favicon,

@@ -56,6 +56,7 @@ export interface BookmarkDraft {
 	description: string;
 	tags: string[];
 	folder: string;
+	/** Remote image URL, or a `[[vault image]]` wikilink for a local cover. */
 	imageUrl: string | null;
 	faviconUrl: string | null;
 	domain: string;

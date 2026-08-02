@@ -3,6 +3,7 @@ import type BookmarkerPlugin from "./main";
 import { fetchHtml, parseMetadata } from "./metadata";
 import { sanitizeFileName, writeBookmarkNote } from "./note-writer";
 import { fetchScreenshot } from "./image";
+import { assetsFolder } from "./cover";
 import { isSafeRemoteUrl } from "./url-safety";
 import { classifyBookmark } from "./classifier";
 import { readTaxonomy } from "./taxonomy";
@@ -122,6 +123,7 @@ function reviewDraft(
 				confidence,
 				allowNewFolders: plugin.settings.allowNewFolders,
 				imageCandidates,
+				assetsFolder: assetsFolder(plugin.settings.rootFolder),
 				duplicatePath: duplicate?.path,
 				domain: draft.domain,
 				domainCount,
