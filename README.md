@@ -28,7 +28,8 @@ Inside the card grid:
 - **Filters**: tag panel (collapsible, frequency- or A–Z-sorted, with its own search box), folder and type dropdowns, a domain chip, and Favorites/Broken/Hidden toggle chips. A scope selector lets you search within the current category or across all bookmarks.
 - **Card size, sort order, and title source** (frontmatter title vs. file name) are controlled from the board toolbar.
 - **Selection**: every card has a checkbox, with Select all/none in the toolbar. A selection feeds the two AI Organize commands, a "Delete broken" bulk action, and a "Hide selected" bulk action; with nothing selected, those commands fall back to whatever the current filters show.
-- **Right-click a card** for: open URL, show related bookmarks (ranked by shared tags, domain, and type), refresh the card (re-fetch the page, re-classify tags and folder, re-pick a cover, then reopen the review window with the update pre-filled), move to another category, add a dated note, regenerate tags, hide/unhide, or delete (moves to system trash, recoverable).
+- **Right-click a card** for: open URL, show related bookmarks (ranked by shared tags, domain, and type), refresh the card (re-fetch the page, re-classify tags and folder, re-pick a cover, then reopen the review window with the update pre-filled), set the cover from a vault image, save the current cover into the vault, remove the cover, move to another category, add a dated note, regenerate tags, hide/unhide, or delete (moves to system trash, recoverable).
+- **Local covers**: a cover can be an image stored in your vault instead of a remote URL. Pick one with "Set cover from vault…", or use "Save cover to vault" to download the current preview into `_bookmarks/_assets/` once and keep it forever — useful for sites like Instagram whose image URLs rotate and break. The reference is stored as a wikilink, so renaming or moving the image never breaks the card. The same picker is available in the review window during capture.
 - **Hidden bookmarks** can be locked behind a password (set in Settings): once locked, revealing hidden cards in a board session asks for the password first.
 - **Tag management**: editing a tag from the tag panel lets you rename it everywhere (case-insensitive merge) or delete it from every bookmark that carries it, vault-wide.
 - The board refreshes itself automatically as files change, created, or renamed, no manual reload needed.
@@ -70,6 +71,19 @@ aspectRatio: 1.91
 ```
 
 The fallback link at the bottom works even without a preview plugin installed.
+
+When the cover is a vault image, `image` holds a wikilink instead of a URL and the body
+uses a native embed, so it renders without any preview plugin at all:
+
+```markdown
+image: "[[_bookmarks/_assets/The article title.png]]"
+```
+
+```markdown
+# The article title
+
+![[_bookmarks/_assets/The article title.png]]
+```
 
 ## Requirements
 

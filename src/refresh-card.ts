@@ -8,6 +8,7 @@ import { classifyBookmark } from "./classifier";
 import { readTaxonomy } from "./taxonomy";
 import { ReviewModal } from "./review-modal";
 import { ensureFolder, sanitizeFileName, sanitizeFolderPath } from "./note-writer";
+import { assetsFolder, coverValue, parseWikilink } from "./cover";
 import { BookmarkDraft } from "./types";
 
 /**
@@ -68,6 +69,11 @@ export async function refreshBookmarkCard(plugin: BookmarkerPlugin, file: TFile)
 			if (shot && isSafeRemoteUrl(shot)) candidates.push(shot);
 		}
 
+		// A cover the user picked from the vault is deliberate: keep proposing it,
+		// and leave switching to a fresh candidate as a one-click decision.
+		const stored = coverValue(fm.image);
+		const localCover = parseWikilink(stored) ? stored : null;
+
 		const draft: BookmarkDraft = {
 			url,
 			name: file.basename,
@@ -75,7 +81,7 @@ export async function refreshBookmarkCard(plugin: BookmarkerPlugin, file: TFile)
 			description: metadata.description || asString(fm.description),
 			tags: classification.tags,
 			folder: classification.folder || relativeFolder(file, settings.rootFolder),
-			imageUrl: candidates[0] ?? null,
+			imageUrl: localCover ?? candidates[0] ?? null,
 			faviconUrl: metadata.faviconUrl,
 			domain: metadata.domain,
 			type: metadata.type || asString(fm.type) || "link",
@@ -91,6 +97,7 @@ export async function refreshBookmarkCard(plugin: BookmarkerPlugin, file: TFile)
 				confidence: classification.confidence,
 				allowNewFolders: settings.allowNewFolders,
 				imageCandidates: candidates,
+				assetsFolder: assetsFolder(settings.rootFolder),
 			},
 			(result) => {
 				if (result) void applyRefresh(plugin, file, result);
@@ -119,9 +126,15 @@ async function applyRefresh(
 			f.favorite = draft.favorite;
 			f.tags = draft.tags;
 			f.broken = false;
-			const safeImage =
-				draft.imageUrl && isSafeRemoteUrl(draft.imageUrl) ? draft.imageUrl : "";
-			f.image = safeImage ? proxiedImage(safeImage, settings.useImageProxy) : "";
+			// Only ever overwrite the cover with a non-empty value: a refetch that
+			// found nothing must not erase a cover the user chose (or a good one
+			// whose page has since dropped its og:image). Use "Remove cover" to clear.
+			const chosen = draft.imageUrl ?? "";
+			if (parseWikilink(chosen)) {
+				f.image = chosen;
+			} else if (chosen && isSafeRemoteUrl(chosen)) {
+				f.image = proxiedImage(chosen, settings.useImageProxy);
+			}
 			if (draft.faviconUrl && isSafeRemoteUrl(draft.faviconUrl)) f.favicon = draft.faviconUrl;
 		});
 

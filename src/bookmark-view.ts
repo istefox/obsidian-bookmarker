@@ -10,7 +10,8 @@ import {
 } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { CategoryStyleModal } from "./category-style-modal";
-import { isSafeRemoteUrl } from "./url-safety";
+import { coverValue, parseWikilink, resolveCover } from "./cover";
+import { removeCover, saveCoverToVault, setCoverFromVault } from "./save-cover";
 import { fetchHtml, parseMetadata } from "./metadata";
 import { readTaxonomy } from "./taxonomy";
 import { classifyBookmark } from "./classifier";
@@ -39,6 +40,7 @@ interface BookmarkItem {
 	file: TFile;
 	title: string;
 	url: string;
+	/** Remote image URL, or a `[[vault image]]` wikilink for a local cover. */
 	image: string;
 	tags: string[];
 	domain: string;
@@ -372,7 +374,7 @@ export class BookmarkView extends ItemView {
 					? file.basename
 					: asString(fm.title) || file.basename,
 				url: asString(fm.url),
-				image: asString(fm.image),
+				image: coverValue(fm.image),
 				tags: normalizeTags(fm.tags),
 				domain: asString(fm.domain),
 				folder: parent.startsWith(prefix) ? parent.slice(prefix.length) : "",
@@ -877,11 +879,14 @@ export class BookmarkView extends ItemView {
 			else this.selected.delete(item.file.path);
 		});
 
-		if (item.image && isSafeRemoteUrl(item.image)) {
-			cover.createEl("img", { attr: { src: item.image, loading: "lazy" } });
+		const source = resolveCover(this.app, item.image, item.file.path);
+		if (source.kind !== "none") {
+			cover.createEl("img", { attr: { src: source.src, loading: "lazy" } });
 		} else {
 			cover.addClass("bookmarker-card-cover-empty");
-			cover.setText(item.domain || "No cover");
+			// A wikilink that no longer resolves reads as "missing", not "never had one".
+			const missing = parseWikilink(item.image) !== null;
+			cover.setText(missing ? "Missing cover" : item.domain || "No cover");
 		}
 
 		const star = card.createSpan({
@@ -965,6 +970,26 @@ export class BookmarkView extends ItemView {
 				.setIcon("refresh-cw")
 				.onClick(() => void refreshBookmarkCard(this.plugin, item.file)),
 		);
+		menu.addItem((i) =>
+			i
+				.setTitle("Set cover from vault…")
+				.setIcon("image")
+				.onClick(() => setCoverFromVault(this.plugin, item.file)),
+		);
+		menu.addItem((i) =>
+			i
+				.setTitle("Save cover to vault")
+				.setIcon("download")
+				.onClick(() => void saveCoverToVault(this.plugin, item.file)),
+		);
+		if (item.image) {
+			menu.addItem((i) =>
+				i
+					.setTitle("Remove cover")
+					.setIcon("image-off")
+					.onClick(() => void removeCover(this.app, item.file)),
+			);
+		}
 		menu.addItem((i) =>
 			i
 				.setTitle("Move to category…")

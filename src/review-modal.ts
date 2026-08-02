@@ -1,6 +1,8 @@
-import { App, Modal, Setting, TFile } from "obsidian";
+import { App, Modal, Notice, Setting, TFile } from "obsidian";
 import { BookmarkDraft, Taxonomy } from "./types";
 import { isSafeRemoteUrl } from "./url-safety";
+import { resolveCover, toWikilink } from "./cover";
+import { ImageSuggestModal, listVaultImages } from "./image-suggest";
 
 const BOOKMARK_TYPES = ["article", "video", "image", "document", "audio", "link"];
 
@@ -11,6 +13,8 @@ export interface ReviewInput {
 	allowNewFolders: boolean;
 	/** Preview-image candidates to choose from (first is the default). */
 	imageCandidates: string[];
+	/** Vault folder whose images sort first in the "cover from vault" picker. */
+	assetsFolder?: string;
 	/** Path of an existing bookmark with the same URL, if any. */
 	duplicatePath?: string;
 	/** The page's domain, and how many existing bookmarks share it. */
@@ -228,11 +232,11 @@ export class ReviewModal extends Modal {
 
 	private renderPreview(): void {
 		this.previewEl.empty();
-		const url = this.result.imageUrl;
-		if (url && isSafeRemoteUrl(url)) {
+		const cover = resolveCover(this.app, this.result.imageUrl ?? "");
+		if (cover.kind !== "none") {
 			this.previewEl.createEl("img", {
 				cls: "bookmarker-preview",
-				attr: { src: url },
+				attr: { src: cover.src },
 			});
 		} else {
 			this.previewEl.createDiv({
@@ -267,6 +271,22 @@ export class ReviewModal extends Modal {
 				});
 				text.inputEl.addClass("bookmarker-wide-input");
 			});
+
+		new Setting(parent)
+			.setName("Cover from vault")
+			.setDesc("Use an image stored in your vault — it survives when the site's URL rots.")
+			.addButton((button) =>
+				button.setButtonText("Choose image…").onClick(() => {
+					const images = listVaultImages(this.app, this.input.assetsFolder ?? "");
+					if (images.length === 0) {
+						new Notice("Bookmarker: no images in the vault.");
+						return;
+					}
+					new ImageSuggestModal(this.app, images, (file) =>
+						this.setCover(toWikilink(file.path)),
+					).open();
+				}),
+			);
 	}
 
 	private renderCoverOptions(): void {
@@ -278,6 +298,17 @@ export class ReviewModal extends Modal {
 		if (!this.result.imageUrl) none.addClass("bookmarker-cover-selected");
 		none.addEventListener("click", () => this.setCover(null));
 
+		// A vault cover is never among the candidates, so give it its own thumbnail.
+		const current = this.result.imageUrl ?? "";
+		const local = resolveCover(this.app, current);
+		if (local.kind === "vault") {
+			const opt = this.coverOptionsEl.createEl("img", {
+				cls: "bookmarker-cover-option bookmarker-cover-selected",
+				attr: { src: local.src },
+			});
+			opt.addEventListener("click", () => this.setCover(current));
+		}
+
 		for (const url of this.safeCandidates()) {
 			const opt = this.coverOptionsEl.createEl("img", {
 				cls: "bookmarker-cover-option",
@@ -288,8 +319,9 @@ export class ReviewModal extends Modal {
 		}
 	}
 
-	private setCover(url: string | null): void {
-		this.result.imageUrl = url;
+	/** Set the cover to a remote URL, a `[[vault image]]` wikilink, or null for none. */
+	private setCover(value: string | null): void {
+		this.result.imageUrl = value;
 		this.renderPreview();
 		this.renderCoverOptions();
 	}

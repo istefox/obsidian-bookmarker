@@ -34,3 +34,16 @@ export function proxiedImage(imageUrl: string, useProxy: boolean): string {
 	if (!useProxy || !imageUrl || imageUrl.startsWith(WSRV_BASE)) return imageUrl;
 	return `${WSRV_BASE}?url=${encodeURIComponent(imageUrl)}&w=${TARGET_WIDTH}&output=webp`;
 }
+
+/**
+ * Undo proxiedImage: recover the origin URL from a wsrv.nl wrapper. Downloading a
+ * cover into the vault should keep the original bytes, not the proxy's resized webp.
+ */
+export function unproxiedImage(imageUrl: string): string {
+	if (!imageUrl.startsWith(WSRV_BASE)) return imageUrl;
+	try {
+		return new URL(imageUrl).searchParams.get("url") || imageUrl;
+	} catch {
+		return imageUrl;
+	}
+}
