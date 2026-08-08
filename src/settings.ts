@@ -31,6 +31,10 @@ export interface BookmarkerSettings {
 	useFileNameAsTitle: boolean;
 	/** Per-category color + icon for the category landing tiles, keyed by folder name ("" = Uncategorized). */
 	categoryStyles: Record<string, { color: string; icon: string }>;
+	/** Show the browser-style bookmark bar above the workspace. Off = the bar is not in the DOM. */
+	showBookmarkBar: boolean;
+	/** How many starred bookmarks the bar shows before it stops, ahead of the category buttons. */
+	bookmarkBarMaxFavorites: number;
 	/** SHA-256 hex of the soft-lock password for the Hidden toggle ("" / null = no lock). Not encryption. */
 	hiddenLockHash: string | null;
 }
@@ -59,6 +63,8 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	sortMode: "added",
 	useFileNameAsTitle: false,
 	categoryStyles: {},
+	showBookmarkBar: false,
+	bookmarkBarMaxFavorites: 12,
 	hiddenLockHash: null,
 };
 
@@ -165,6 +171,37 @@ export class BookmarkerSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.alwaysReview)
 					.onChange(async (value) => {
 						this.plugin.settings.alwaysReview = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl).setName("Bookmark bar").setHeading();
+
+		new Setting(containerEl)
+			.setName("Show the bookmark bar")
+			.setDesc(
+				"A browser-style strip above the workspace: starred bookmarks as one-click " +
+					"buttons, then a dropdown per category. Toggle it from the ribbon icon or " +
+					"the 'Toggle bookmark bar' command (assign a hotkey to it).",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.showBookmarkBar)
+					.onChange(async (value) => {
+						this.plugin.settings.showBookmarkBar = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Starred bookmarks on the bar")
+			.setDesc("How many starred bookmarks the bar shows before the category buttons.")
+			.addSlider((slider) =>
+				slider
+					.setLimits(4, 30, 1)
+					.setValue(this.plugin.settings.bookmarkBarMaxFavorites)
+					.onChange(async (value) => {
+						this.plugin.settings.bookmarkBarMaxFavorites = value;
 						await this.plugin.saveSettings();
 					}),
 			);

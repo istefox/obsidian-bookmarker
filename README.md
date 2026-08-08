@@ -6,6 +6,8 @@ The goal is a Raindrop-style bookmarking experience that lives entirely in plain
 
 ## What's new
 
+**Bookmark bar.** A browser-style strip across the top of the workspace, above the ribbon and both sidebars. Starred bookmarks sit on it as one-click buttons with their favicons; each category becomes a button that drops down its links. Clicking one opens the site, Cmd/Ctrl-click opens the note instead, and the note you are working in stays fully visible the whole time. It is off by default: turn it on in Settings, then toggle it from the ribbon icon or the "Toggle bookmark bar" command, which takes a hotkey.
+
 **Local cover images.** A card's cover can now be an image stored in your vault rather than a remote URL. Sites like Instagram rotate their thumbnail URLs, so a saved preview eventually stops loading; a vault image does not. Right-click a card to pick one with "Set cover from vault…", or use "Save cover to vault" to download the current preview into `_bookmarks/_assets/` once and keep it. The reference is stored as a wikilink, so renaming or moving the image never breaks the card. Refreshing a card also no longer wipes a cover when the page has since dropped its `og:image`.
 
 Full notes for every version are on the [releases page](https://github.com/istefox/obsidian-bookmarker/releases).
@@ -21,6 +23,7 @@ Full notes for every version are on the [releases page](https://github.com/istef
 - **Broken-link checker.** An on-demand command tests every saved URL and flags dead ones in frontmatter. It is deliberately conservative: only a 404/410 or a network failure counts as broken, so anti-bot 403/429 and 5xx responses are left alone.
 - **Organize.** Bulk tidying for a collection that has grown messy: deduplicate notes that point to the same URL, re-tag in batches, move misfiled bookmarks to a better folder, and remediate dead links by archiving, moving, or marking them. Every operation previews its changes and applies only what you approve.
 - **Import.** Pull your whole Raindrop library straight from the Raindrop API, covers and collections included, with a token set in settings. You can also bring in a Pocket, Raindrop, or browser HTML export, or a Raindrop CSV.
+- **Bookmark bar.** An optional horizontal bar pinned above the workspace, in the spirit of a browser's bookmark bar: starred bookmarks as favicon buttons, then a dropdown per category. It shrinks the workspace rather than covering it, so the note you are reading stays visible. Off by default; toggle it from the ribbon icon or a hotkey.
 - **Insert bookmark link.** A command that fuzzy-searches your saved bookmarks and drops a wiki-link to the one you pick at the cursor, in whatever note you're currently editing.
 
 Several helpers degrade gracefully and stay out of the way: a favicon fallback service, an optional Wayback Machine snapshot, and the image proxy can each be turned off.
@@ -39,6 +42,19 @@ Inside the card grid:
 - **Hidden bookmarks** can be locked behind a password (set in Settings): once locked, revealing hidden cards in a board session asks for the password first.
 - **Tag management**: editing a tag from the tag panel lets you rename it everywhere (case-insensitive merge) or delete it from every bookmark that carries it, vault-wide.
 - The board refreshes itself automatically as files change, created, or renamed, no manual reload needed.
+
+## Bookmark bar
+
+The board is a full tab, which is the wrong shape when you only want to jump to a link without losing sight of the note you're writing. The bookmark bar covers that: a thin horizontal strip inserted above the workspace, spanning the full window width above the ribbon and both sidebars. It shrinks the area below rather than floating over it, so nothing is covered.
+
+Turn it on under **Settings → Bookmark bar**, then toggle it with the ribbon icon or the **Toggle bookmark bar** command, which accepts a hotkey. It is off by default.
+
+- **Starred bookmarks** come first, each as a favicon plus title. The count is configurable (4–30). A bookmark with no usable favicon falls back to a link glyph.
+- **Categories** follow, one button each, in the same order as the board's tiles and wearing the same accent color and icon. Clicking one opens a dropdown of that category's bookmarks; past 40 it offers "Open in board" instead.
+- **Click** opens the site in your browser, **Cmd/Ctrl-click** opens the bookmark note, **right-click** a starred item for open URL / open note / unstar.
+- The bar tracks the vault live: star a card on the board and it appears here without a reload; rename a category folder and its button follows.
+
+It works on desktop and mobile. Two limitations worth knowing: popout windows get no bar, and hidden bookmarks never appear on it.
 
 ## How a note looks
 
@@ -141,7 +157,7 @@ The two AI commands work on the cards you tick on the board (each card has a sel
 
 ## Settings
 
-The settings tab covers the classifier (mode, model, API key), the vault layout (root folder, review before saving), preview behavior (image proxy, screenshot fallback), the free service layers (favicon, Wayback), classification behavior (allow new tags, allow new folders, duplicate and same-domain warnings, max tags, excerpt length), the Organize commands (batch cap, broken-link folder, default broken-link remediation), a Raindrop API token for the Raindrop import, and a password for the board's Hidden-cards lock. The API key and token fields each have a Test button to check they work.
+The settings tab covers the classifier (mode, model, API key), the vault layout (root folder, review before saving), the bookmark bar (show it, how many starred bookmarks it holds), preview behavior (image proxy, screenshot fallback), the free service layers (favicon, Wayback), classification behavior (allow new tags, allow new folders, duplicate and same-domain warnings, max tags, excerpt length), the Organize commands (batch cap, broken-link folder, default broken-link remediation), a Raindrop API token for the Raindrop import, and a password for the board's Hidden-cards lock. The API key and token fields each have a Test button to check they work.
 
 Card size, sort order, title source, and per-category color/icon styling live on the board toolbar itself rather than in this tab, since they're board-viewing preferences rather than plugin configuration.
 

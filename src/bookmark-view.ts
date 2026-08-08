@@ -1,16 +1,9 @@
-import {
-	debounce,
-	ItemView,
-	Menu,
-	Notice,
-	normalizePath,
-	setIcon,
-	TFile,
-	WorkspaceLeaf,
-} from "obsidian";
+import { debounce, ItemView, Menu, Notice, normalizePath, TFile, WorkspaceLeaf } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { CategoryStyleModal } from "./category-style-modal";
-import { coverValue, parseWikilink, resolveCover } from "./cover";
+import { BookmarkItem, isUnderRoot, loadBookmarks } from "./bookmark-data";
+import { renderCategoryIcon } from "./category-icon";
+import { parseWikilink, resolveCover } from "./cover";
 import { removeCover, saveCoverToVault, setCoverFromVault } from "./save-cover";
 import { fetchHtml, parseMetadata } from "./metadata";
 import { readTaxonomy } from "./taxonomy";
@@ -19,7 +12,6 @@ import { FolderSuggestModal } from "./folder-suggest";
 import { RegenerateTagsModal } from "./regenerate-tags-modal";
 import { appendNote, ensureFolder, sanitizeFolderPath } from "./note-writer";
 import { AnnotateModal } from "./annotate-modal";
-import { normalizeTags } from "./tags";
 import { ManageTagModal } from "./manage-tag-modal";
 import { changeTagEverywhere, countTagUsage } from "./tag-ops";
 import { refreshBookmarkCard } from "./refresh-card";
@@ -28,32 +20,6 @@ import { hashPassword, PasswordPromptModal } from "./password-modal";
 export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
 const MAX_RELATED = 50;
-
-/** Render a category icon: a Lucide name produces an SVG, anything else (emoji) falls back to text. */
-function renderCategoryIcon(el: HTMLElement, value: string): void {
-	el.empty();
-	setIcon(el, value);
-	if (!el.querySelector("svg")) el.setText(value);
-}
-
-interface BookmarkItem {
-	file: TFile;
-	title: string;
-	url: string;
-	/** Remote image URL, or a `[[vault image]]` wikilink for a local cover. */
-	image: string;
-	tags: string[];
-	domain: string;
-	folder: string;
-	created: string;
-	/** File modification time (ms epoch), for the "Modified" sort. */
-	modified: number;
-	type: string;
-	favorite: boolean;
-	broken: boolean;
-	hidden: boolean;
-	description: string;
-}
 
 /** Raindrop-like board: a grid of cover cards for the saved bookmarks (read-only). */
 export class BookmarkView extends ItemView {
@@ -136,8 +102,7 @@ export class BookmarkView extends ItemView {
 
 	/** True when a path is the root folder or sits under it. */
 	private isUnderRoot(path: string): boolean {
-		const root = normalizePath(this.plugin.settings.rootFolder);
-		return path === root || path.startsWith(`${root}/`);
+		return isUnderRoot(path, this.plugin.settings.rootFolder);
 	}
 
 	/** Re-scan the vault and redraw the grid, keeping the toolbar, filters, and selection. */
@@ -170,6 +135,17 @@ export class BookmarkView extends ItemView {
 	/** Filter the board to a single domain (www-insensitive) and redraw. */
 	filterByDomain(domain: string): void {
 		this.domainFilter = domain.toLowerCase().replace(/^www\./, "");
+		this.viewMode = "cards";
+		this.rebuild();
+	}
+
+	/** Drill into one category ("" = Uncategorized) and redraw, as clicking its tile does. */
+	filterByCategory(category: string): void {
+		this.activeCategory = category;
+		this.searchScope = "category";
+		this.domainFilter = "";
+		this.relatedTo = null;
+		this.search = "";
 		this.viewMode = "cards";
 		this.rebuild();
 	}
@@ -360,35 +336,7 @@ export class BookmarkView extends ItemView {
 	}
 
 	private loadBookmarks(): void {
-		const root = normalizePath(this.plugin.settings.rootFolder);
-		const prefix = `${root}/`;
-		const items: BookmarkItem[] = [];
-		for (const file of this.app.vault.getMarkdownFiles()) {
-			if (file.path !== root && !file.path.startsWith(prefix)) continue;
-			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-			if (!fm || fm.source !== "obsidian-bookmarker") continue;
-			const parent = file.parent?.path ?? "";
-			items.push({
-				file,
-				title: this.plugin.settings.useFileNameAsTitle
-					? file.basename
-					: asString(fm.title) || file.basename,
-				url: asString(fm.url),
-				image: coverValue(fm.image),
-				tags: normalizeTags(fm.tags),
-				domain: asString(fm.domain),
-				folder: parent.startsWith(prefix) ? parent.slice(prefix.length) : "",
-				created: asString(fm.created),
-				modified: file.stat.mtime,
-				type: asString(fm.type) || "link",
-				favorite: fm.favorite === true,
-				broken: fm.broken === true,
-				hidden: fm.hidden === true,
-				description: asString(fm.description),
-			});
-		}
-		items.sort((a, b) => b.created.localeCompare(a.created));
-		this.items = items;
+		this.items = loadBookmarks(this.app, this.plugin.settings);
 	}
 
 	private renderToolbar(): void {
@@ -1166,10 +1114,6 @@ export class BookmarkView extends ItemView {
 		}
 	}
 
-}
-
-function asString(value: unknown): string {
-	return typeof value === "string" ? value : "";
 }
 
 /** The text a fuzzy search runs against for one bookmark. */
