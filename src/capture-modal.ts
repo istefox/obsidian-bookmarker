@@ -3,9 +3,9 @@ import type BookmarkerPlugin from "./main";
 import { isHttpUrl } from "./url-safety";
 
 /**
- * M1 capture modal: manual URL entry with inline validation.
- * The fetch/classify/review pipeline is wired in later milestones; for now the
- * modal validates the URL and hands it to `onSubmit`.
+ * Capture modal: manual URL entry with inline validation.
+ * Validates the URL and hands it to `onSubmit`, which runs the fetch/classify/
+ * review pipeline in `captureBookmark`.
  */
 export class CaptureModal extends Modal {
 	private url: string;
