@@ -4,6 +4,7 @@ import { CategoryStyleModal } from "./category-style-modal";
 import { BookmarkItem, isUnderRoot, loadBookmarks } from "./bookmark-data";
 import { renderCategoryIcon } from "./category-icon";
 import { parseWikilink, resolveCover } from "./cover";
+import { trashBookmarks } from "./cover-gc";
 import { removeCover, saveCoverToVault, setCoverFromVault } from "./save-cover";
 import { fetchHtml, parseMetadata } from "./metadata";
 import { readTaxonomy } from "./taxonomy";
@@ -989,14 +990,10 @@ export class BookmarkView extends ItemView {
 	}
 
 	private async deleteBookmark(item: BookmarkItem): Promise<void> {
-		try {
-			// Recoverable: honours the user's "Deleted files" preference. The board
-			// auto-refreshes from the vault delete event.
-			await this.app.fileManager.trashFile(item.file);
-		} catch (error) {
-			const msg = error instanceof Error ? error.message : String(error);
-			new Notice(`Delete failed: ${msg}`);
-		}
+		// The board auto-refreshes from the vault delete event. A downloaded cover
+		// nothing else points at goes with the note.
+		const { failed } = await trashBookmarks(this.app, this.plugin.settings, [item.file]);
+		if (failed) new Notice("Delete failed — see the console for details.");
 	}
 
 	private async toggleHidden(item: BookmarkItem): Promise<void> {
@@ -1022,15 +1019,12 @@ export class BookmarkView extends ItemView {
 			(i) => i.broken && this.selected.has(i.file.path),
 		);
 		if (targets.length === 0) return;
-		let failed = 0;
-		for (const item of targets) {
-			try {
-				await this.app.fileManager.trashFile(item.file);
-				this.selected.delete(item.file.path);
-			} catch {
-				failed++;
-			}
-		}
+		const { trashed, failed } = await trashBookmarks(
+			this.app,
+			this.plugin.settings,
+			targets.map((item) => item.file),
+		);
+		for (const file of trashed) this.selected.delete(file.path);
 		if (failed > 0) new Notice(`${failed} deletion${failed === 1 ? "" : "s"} failed.`);
 	}
 

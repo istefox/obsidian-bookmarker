@@ -128,6 +128,8 @@ small file and makes the feature findable.
   hand-restructured note may not match the expected shape.
 - Deleting or deduplicating a bookmark still leaves its downloaded asset behind.
   `organize-dedup` trashes the losing note only. Orphan cleanup is not implemented.
+  *Closed by ADR-005 (issue #60): every deletion path now reclaims a downloaded cover
+  nothing else references. Assets orphaned before that change stay where they are.*
 
 **Neutral**
 - `organize-dedup`'s richness score treats any non-empty `image` string as "has a
