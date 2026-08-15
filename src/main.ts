@@ -8,6 +8,7 @@ import { CaptureModal } from "./capture-modal";
 import { captureBookmark } from "./capture";
 import { isHttpUrl } from "./url-safety";
 import { BOOKMARK_VIEW_TYPE, BookmarkView } from "./bookmark-view";
+import { BookmarkBar } from "./bookmark-bar";
 import { checkBrokenLinks } from "./link-check";
 import { ImportModal } from "./import-modal";
 import { fetchRaindropItems } from "./raindrop";
@@ -19,9 +20,12 @@ import { bulkRetagBookmarks, suggestFolderMoves } from "./organize-ai";
 
 export default class BookmarkerPlugin extends Plugin {
 	settings!: BookmarkerSettings;
+	/** The browser-style top bar. A Component child, so it unloads with the plugin. */
+	private bar!: BookmarkBar;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
+		this.addChild((this.bar = new BookmarkBar(this)));
 
 		this.addCommand({
 			id: "bookmark-a-url",
@@ -63,6 +67,14 @@ export default class BookmarkerPlugin extends Plugin {
 			id: "open-bookmarks-board",
 			name: "Open bookmarks board",
 			callback: () => void this.openBoard(),
+		});
+		this.addRibbonIcon("panel-top", "Toggle bookmark bar", () => {
+			void this.toggleBookmarkBar();
+		});
+		this.addCommand({
+			id: "toggle-bookmark-bar",
+			name: "Toggle bookmark bar",
+			callback: () => void this.toggleBookmarkBar(),
 		});
 		this.addCommand({
 			id: "check-broken-links",
@@ -119,6 +131,12 @@ export default class BookmarkerPlugin extends Plugin {
 
 	onunload(): void {}
 
+	/** Show or hide the top bar. The setting doubles as the open/collapsed state. */
+	private async toggleBookmarkBar(): Promise<void> {
+		this.settings.showBookmarkBar = !this.settings.showBookmarkBar;
+		await this.saveSettings();
+	}
+
 	private async runBrokenLinkCheck(): Promise<void> {
 		const notice = new Notice("Checking links…", 0);
 		try {
@@ -169,8 +187,11 @@ export default class BookmarkerPlugin extends Plugin {
 		}
 	}
 
-	/** Reveal the bookmarks board, creating its leaf if needed; optionally filter by domain. */
-	async openBoard(domain?: string): Promise<void> {
+	/**
+	 * Reveal the bookmarks board, creating its leaf if needed. Optionally drill straight
+	 * into one domain or one category ("" = Uncategorized, so check for undefined).
+	 */
+	async openBoard(filter?: { domain?: string; category?: string }): Promise<void> {
 		const { workspace } = this.app;
 		let leaf = workspace.getLeavesOfType(BOOKMARK_VIEW_TYPE)[0];
 		if (!leaf) {
@@ -178,9 +199,9 @@ export default class BookmarkerPlugin extends Plugin {
 			await leaf.setViewState({ type: BOOKMARK_VIEW_TYPE, active: true });
 		}
 		await workspace.revealLeaf(leaf);
-		if (domain && leaf.view instanceof BookmarkView) {
-			leaf.view.filterByDomain(domain);
-		}
+		if (!(leaf.view instanceof BookmarkView)) return;
+		if (filter?.domain) leaf.view.filterByDomain(filter.domain);
+		else if (filter?.category !== undefined) leaf.view.filterByCategory(filter.category);
 	}
 
 	async loadSettings(): Promise<void> {
@@ -190,6 +211,9 @@ export default class BookmarkerPlugin extends Plugin {
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
+		// Covers every input the bar reads — visibility, root folder, category styles,
+		// favourites cap — without threading a callback through each settings control.
+		this.bar?.sync();
 	}
 
 	/** Prefill the modal when the clipboard holds an http(s) URL. Safe on mobile. */

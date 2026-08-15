@@ -601,3 +601,101 @@
 	left: var(--size-2-2);
 	z-index: 1;
 }
+
+/* Bookmark bar — a browser-style strip inserted above .horizontal-main-container. */
+
+.bookmarker-bar {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-2) var(--size-4-2);
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+}
+
+.bookmarker-bar::-webkit-scrollbar {
+	display: none;
+}
+
+.bookmarker-bar-item,
+.bookmarker-bar-folder {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	max-width: 18ch;
+	padding: 2px var(--size-2-3);
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+	height: auto;
+	cursor: pointer;
+}
+
+.bookmarker-bar-item:hover,
+.bookmarker-bar-folder:hover {
+	background: var(--background-modifier-hover);
+	box-shadow: none;
+}
+
+.bookmarker-bar-folder {
+	border-left: 3px solid var(--bm-cat-color, transparent);
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.bookmarker-bar-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.bookmarker-bar-icon {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	color: var(--text-muted);
+	font-size: 13px;
+	line-height: 1;
+}
+
+.bookmarker-bar-icon img {
+	width: 16px;
+	height: 16px;
+	object-fit: contain;
+}
+
+.bookmarker-bar-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.bookmarker-bar-caret {
+	flex-shrink: 0;
+	color: var(--text-faint);
+	font-size: 0.7em;
+}
+
+.bookmarker-bar-sep {
+	flex-shrink: 0;
+	width: 1px;
+	height: 16px;
+	margin: 0 var(--size-2-2);
+	background: var(--background-modifier-border);
+}
+
+.bookmarker-bar-empty {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}

@@ -127,7 +127,7 @@ function reviewDraft(
 				duplicatePath: duplicate?.path,
 				domain: draft.domain,
 				domainCount,
-				onOpenDomain: () => void plugin.openBoard(draft.domain),
+				onOpenDomain: () => void plugin.openBoard({ domain: draft.domain }),
 			},
 			resolve,
 		).open();
