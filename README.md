@@ -10,6 +10,8 @@ The goal is a Raindrop-style bookmarking experience that lives entirely in plain
 
 **Local cover images.** A card's cover can now be an image stored in your vault rather than a remote URL. Sites like Instagram rotate their thumbnail URLs, so a saved preview eventually stops loading; a vault image does not. Right-click a card to pick one with "Set cover from vault…", or use "Save cover to vault" to download the current preview into `_bookmarks/_assets/` once and keep it. The reference is stored as a wikilink, so renaming or moving the image never breaks the card. Refreshing a card also no longer wipes a cover when the page has since dropped its `og:image`.
 
+Deleting a bookmark now takes its downloaded cover with it, so `_bookmarks/_assets/` stops growing forever. Only images the plugin downloaded into that folder are ever removed, only when no other note still points at one, and they go to the trash like any other deleted file. An image you picked from elsewhere in your vault is yours and always survives the bookmark.
+
 Full notes for every version are on the [releases page](https://github.com/istefox/obsidian-bookmarker/releases).
 
 ## What it does
