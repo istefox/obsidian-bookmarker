@@ -1,5 +1,7 @@
 import { App, Notice, TFile } from "obsidian";
 import type BookmarkerPlugin from "./main";
+import type { BookmarkerSettings } from "./settings";
+import { trashBookmarks } from "./cover-gc";
 import { normalizeUrl } from "./duplicates";
 import { OrganizeModal, OrganizeRow, OrganizeSelection } from "./organize-modal";
 import { bookmarkNoteFiles } from "./organize-scan";
@@ -75,39 +77,42 @@ export async function deduplicateBookmarks(plugin: BookmarkerPlugin): Promise<vo
 		intro: `${rows.length} duplicate note(s) across ${duplicateGroups.length} group(s). Checked notes are merged into the kept note and deleted.`,
 		rows: rows.map((r) => r.row),
 		applyLabel: "Merge & delete",
-		onApply: (selected) => applyDedup(app, byId, selected),
+		onApply: (selected) => applyDedup(app, settings, byId, selected),
 	}).open();
 }
 
 async function applyDedup(
 	app: App,
+	settings: BookmarkerSettings,
 	byId: Map<string, DedupRow>,
 	selected: OrganizeSelection[],
 ): Promise<void> {
-	let merged = 0;
+	// Two phases: never trash a victim whose merge into the keeper failed, so a
+	// partial failure leaves the duplicate intact rather than silently lost.
+	const merged: TFile[] = [];
 	let failed = 0;
 	for (const sel of selected) {
 		const entry = byId.get(sel.id);
 		if (!entry) continue;
-		// Two phases: never trash a victim whose merge into the keeper failed, so a
-		// partial failure leaves the duplicate intact rather than silently lost.
 		try {
 			await mergeInto(app, entry.keeper, entry.victim);
+			merged.push(entry.victim.file);
 		} catch (error) {
 			failed++;
 			console.warn(`[bookmarker] dedup merge failed for ${entry.victim.file.path}:`, error);
-			continue;
-		}
-		try {
-			await app.fileManager.trashFile(entry.victim.file);
-			merged++;
-		} catch (error) {
-			failed++;
-			console.warn(`[bookmarker] dedup delete failed for ${entry.victim.file.path}:`, error);
 		}
 	}
+
+	// Trashing the whole batch at once lets two victims sharing one cover release it.
+	const result = await trashBookmarks(app, settings, merged);
+	failed += result.failed;
 	const tail = failed ? `, ${failed} failed` : "";
-	new Notice(`Bookmarker: merged & deleted ${merged} duplicate(s)${tail}.`);
+	const covers = result.coversRemoved
+		? `, ${result.coversRemoved} cover${result.coversRemoved === 1 ? "" : "s"} reclaimed`
+		: "";
+	new Notice(
+		`Bookmarker: merged & deleted ${result.trashed.length} duplicate(s)${tail}${covers}.`,
+	);
 }
 
 /** Merge a victim's tags, favorite, and Notes bullets into the keeper. */
