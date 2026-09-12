@@ -9,10 +9,9 @@ import { assetsFolder } from "./cover";
  * subfolders (covers, broken-link remediation) — see `internalFolderPaths`.
  *
  * `brokenFolderName` defaults to the plugin's own settings default ("_broken", see
- * `settings.ts`). Callers that already have the live `BookmarkerSettings` should
- * pass `settings.brokenFolderName` explicitly so a user-customized name is
- * actually honored; call sites that don't (yet) pass it only get the conventional
- * default excluded, which is a known, narrow gap, not a silent correctness bug.
+ * `settings.ts`) only for a caller with no live settings to read; every call site
+ * in this codebase has settings in scope and passes `settings.brokenFolderName`
+ * explicitly, so a user-customized name is honored everywhere.
  */
 export function readTaxonomy(app: App, rootFolder: string, brokenFolderName = "_broken"): Taxonomy {
 	const root = normalizePath(rootFolder);

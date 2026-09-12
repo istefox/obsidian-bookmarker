@@ -50,7 +50,7 @@ export async function refreshBookmarkCard(plugin: BookmarkerPlugin, file: TFile)
 		}
 
 		const metadata = parseMetadata(html, url, settings.excerptLength);
-		const taxonomy = readTaxonomy(app, settings.rootFolder);
+		const taxonomy = readTaxonomy(app, settings.rootFolder, settings.brokenFolderName);
 		const classification = await classifyBookmark(
 			settings,
 			{

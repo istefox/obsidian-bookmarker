@@ -1,7 +1,7 @@
 <!-- project-tasks: prefix=BM lastId=19 -->
 # PROJECT TASKS
 
-Updated: 2026-09-12 · Open: 1 (P1: 0) · In progress: 0
+Updated: 2026-09-12 · Open: 0 (P1: 0) · In progress: 0
 
 ## GitHub Issues
 
@@ -16,9 +16,6 @@ Reconciled 2026-09-12 against HEAD `e435de4` (release 0.1.29) from the audit emb
 below was re-verified line-by-line this session and is still present, none already fixed.
 Ordered for closure: content-loss and privacy risks first, then security, then defects with a
 workaround, then documentation/housekeeping.
-
-- [ ] `BM-019` **P3** `readTaxonomy` only excludes the broken-folder by its default name at 3 call sites (`capture.ts`, `bookmark-view.ts`, `refresh-card.ts`), a user-customized `brokenFolderName` still leaks through as an ordinary destination there — `src/taxonomy.ts` <!-- src:session kind:fix opened:2026-09-12 -->
-  - Surfaced by the BM-009 fix (fix/organize-ai-pipeline branch); those 3 call sites need to pass `settings.brokenFolderName` the same way `organize-ai.ts` now does
 
 ## In Progress
 
@@ -51,7 +48,8 @@ _none_
 - [x] `BM-006` Card refresh now resyncs the body embed with the new frontmatter cover instead of leaving it stale (2026-09-12)
 - [x] `BM-004` Board with zero visible/selected cards now yields zero AI candidates instead of falling back to the whole vault; whole-vault fallback only applies with no board open at all (2026-09-12)
 - [x] `BM-007` Capped AI batches now advance per-command (bulk-retag / suggest-folder-moves independently), re-running actually reaches later bookmarks (2026-09-12)
-- [x] `BM-009` Taxonomy offered to the classifier now excludes the plugin's internal `_assets` and broken-link folders (known gap: 3 other call sites still exclude only the default `_broken` name, not a customized one — see `taxonomy.ts` doc comment) (2026-09-12)
+- [x] `BM-009` Taxonomy offered to the classifier now excludes the plugin's internal `_assets` and broken-link folders (2026-09-12)
+- [x] `BM-019` The 3 remaining `readTaxonomy` call sites (`capture.ts`, `bookmark-view.ts` x2, `refresh-card.ts`) now pass `settings.brokenFolderName` the same way `organize-ai.ts` already did, so a user-customized broken-folder name is honored everywhere instead of only the `"_broken"` default (2026-09-12)
 - [x] `BM-003` Proxy opt-out now skips the fallback entirely when disabled, including when the stored cover is already a wsrv.nl URL from a prior setting (2026-09-12)
 - [x] `BM-010` Per-card checkbox change now triggers `renderGrid()`, so "Delete broken"/"Hide selected" button visibility updates immediately, matching the select-all/clear-selection pattern (2026-09-12)
 - [x] `BM-011` Related-bookmarks mode now applies the same search/scope/domain/folder/type/favorites/broken/tag filters as normal mode, narrowing candidates before ranking/`MAX_RELATED` truncation instead of bypassing them (2026-09-12)
