@@ -15,6 +15,9 @@ data.json
 # OS
 .DS_Store
 
+# Test build output (npm run test)
+.node-test-out/
+
 # Claude Code session/tooling files
 .claude/
 

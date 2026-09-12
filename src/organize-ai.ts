@@ -19,7 +19,7 @@ interface Candidate {
 
 /** Re-run the classifier over the selected/visible bookmarks and replace their tags. */
 export async function bulkRetagBookmarks(plugin: BookmarkerPlugin): Promise<void> {
-	const candidates = await classifyCandidates(plugin);
+	const candidates = await classifyCandidates(plugin, "bulk-retag");
 	if (!candidates) return;
 
 	const byId = new Map<string, Candidate>();
@@ -46,7 +46,7 @@ export async function bulkRetagBookmarks(plugin: BookmarkerPlugin): Promise<void
 
 /** Propose a better destination subfolder for the selected/visible bookmarks. */
 export async function suggestFolderMoves(plugin: BookmarkerPlugin): Promise<void> {
-	const candidates = await classifyCandidates(plugin);
+	const candidates = await classifyCandidates(plugin, "suggest-folder-moves");
 	if (!candidates) return;
 
 	// Only propose a move when the suggested folder actually differs.
@@ -81,11 +81,76 @@ export async function suggestFolderMoves(plugin: BookmarkerPlugin): Promise<void
 }
 
 /**
+ * Per-command batch-continuation offsets, so a re-run advances into the untouched
+ * tail of the resolved candidate set instead of always re-slicing from index 0.
+ * Keyed by an opaque command id ("bulk-retag" vs. "suggest-folder-moves" each get
+ * independent progress) plus the resolved set's signature (sorted file paths): if
+ * the composition of candidates changes between runs (different board
+ * selection/filter, files added/removed), the offset resets to 0 rather than
+ * skipping files that were never actually processed. Session-only, in-memory:
+ * closing/reopening Obsidian resets progress, which is an acceptable same-session
+ * convenience, not a persisted queue.
+ */
+interface BatchContinuation {
+	signature: string;
+	offset: number;
+}
+const batchContinuations = new Map<string, BatchContinuation>();
+
+/** Stable signature for a resolved candidate set, order-independent. */
+function candidateSetSignature(paths: string[]): string {
+	return [...paths].sort().join("\n");
+}
+
+/**
+ * Pure offset lookup: where to resume `commandId`'s batch within `paths`. Returns 0
+ * when there is no prior state or the candidate set's composition changed since the
+ * last run. Exported for unit testing without a live Obsidian App/TFile.
+ */
+export function nextBatchOffset(
+	state: Map<string, BatchContinuation>,
+	commandId: string,
+	paths: string[],
+): { offset: number; signature: string } {
+	const signature = candidateSetSignature(paths);
+	const prior = state.get(commandId);
+	const offset = prior && prior.signature === signature ? prior.offset : 0;
+	return { offset, signature };
+}
+
+/**
+ * Pure offset commit: advance `commandId`'s progress past a successfully processed
+ * batch, or forget it once the whole set is consumed (so the next run starts over
+ * from the top). Only call this after the batch actually finished processing —
+ * committing before a failed classify would skip the files that were never
+ * classified. Exported for unit testing.
+ */
+export function commitBatchOffset(
+	state: Map<string, BatchContinuation>,
+	commandId: string,
+	signature: string,
+	offsetBefore: number,
+	batchSize: number,
+	total: number,
+): void {
+	const offsetAfter = offsetBefore + batchSize;
+	if (offsetAfter >= total) {
+		state.delete(commandId);
+	} else {
+		state.set(commandId, { signature, offset: offsetAfter });
+	}
+}
+
+/**
  * Resolve candidates (board selection → visible cards → whole vault), cap them, and
  * classify each from stored frontmatter (no per-page fetch). Returns null when there
- * is nothing to do (a Notice is shown).
+ * is nothing to do (a Notice is shown). `commandId` scopes batch-continuation state
+ * (see `nextBatchOffset`/`commitBatchOffset`) independently per calling command.
  */
-async function classifyCandidates(plugin: BookmarkerPlugin): Promise<Candidate[] | null> {
+async function classifyCandidates(
+	plugin: BookmarkerPlugin,
+	commandId: string,
+): Promise<Candidate[] | null> {
 	const { app, settings } = plugin;
 	const files = resolveCandidateFiles(plugin);
 	if (files.length === 0) {
@@ -94,10 +159,11 @@ async function classifyCandidates(plugin: BookmarkerPlugin): Promise<Candidate[]
 	}
 
 	const cap = settings.organizeBatchCap;
-	const capped = files.slice(0, cap);
-	const skipped = files.length - capped.length;
+	const paths = files.map((f) => f.path);
+	const { offset, signature } = nextBatchOffset(batchContinuations, commandId, paths);
+	const capped = files.slice(offset, offset + cap);
 
-	const taxonomy = readTaxonomy(app, settings.rootFolder);
+	const taxonomy = readTaxonomy(app, settings.rootFolder, settings.brokenFolderName);
 	const root = normalizePath(settings.rootFolder);
 	const prefix = `${root}/`;
 	const notice = new Notice("Classifying…", 0);
@@ -135,27 +201,51 @@ async function classifyCandidates(plugin: BookmarkerPlugin): Promise<Candidate[]
 		return null;
 	}
 	notice.hide();
+	commitBatchOffset(batchContinuations, commandId, signature, offset, capped.length, files.length);
 
-	if (skipped > 0) {
+	const processedSoFar = offset + capped.length;
+	const remaining = files.length - processedSoFar;
+	if (remaining > 0) {
 		new Notice(
-			`Bookmarker: processed ${capped.length} of ${files.length} (batch cap reached); ` +
-				`re-run to continue with the remaining ${skipped}.`,
+			`Bookmarker: processed ${processedSoFar} of ${files.length} (batch cap reached); ` +
+				`re-run to continue with the remaining ${remaining}.`,
 		);
 	}
 	return out;
 }
 
-/** Board selection, else the visible cards, else every bookmark under the root. */
+/**
+ * Board selection, else the visible cards, else — only when no board view is open
+ * at all — every bookmark under the root. Once a board is open, "zero visible
+ * cards" (e.g. an active filter/search matching nothing) means zero candidates: it
+ * must never silently expand back out to the whole vault, since that would run the
+ * classifier over hidden bookmarks the user never selected or even saw.
+ */
 function resolveCandidateFiles(plugin: BookmarkerPlugin): TFile[] {
 	const leaf = plugin.app.workspace.getLeavesOfType(BOOKMARK_VIEW_TYPE)[0];
 	const view = leaf?.view instanceof BookmarkView ? leaf.view : null;
 	if (view) {
-		const selected = view.getSelectedFiles();
-		if (selected.length > 0) return selected;
-		const visible = view.getVisibleFiles();
-		if (visible.length > 0) return visible;
+		return pickCandidateFiles(true, view.getSelectedFiles(), view.getVisibleFiles(), []);
 	}
-	return bookmarkNoteFiles(plugin.app, plugin.settings);
+	return pickCandidateFiles(false, [], [], bookmarkNoteFiles(plugin.app, plugin.settings));
+}
+
+/**
+ * Pure candidate-resolution decision. With a board view open, selection wins, else
+ * visible cards (even if that list is empty — no vault-wide fallback). The
+ * whole-vault fallback applies only when there is no board view open at all.
+ * Exported for unit testing without a live Obsidian App/TFile.
+ */
+export function pickCandidateFiles<T>(
+	hasBoardView: boolean,
+	selectedFiles: T[],
+	visibleFiles: T[],
+	wholeVaultFiles: T[],
+): T[] {
+	if (hasBoardView) {
+		return selectedFiles.length > 0 ? selectedFiles : visibleFiles;
+	}
+	return wholeVaultFiles;
 }
 
 async function applyRetag(
