@@ -70,8 +70,10 @@ export async function saveCoverToVault(plugin: BookmarkerPlugin, note: TFile): P
 	try {
 		let bytes = await download(source);
 		if (!bytes) {
-			// Some origins block hotlinking but serve the proxy fine.
-			bytes = await download(proxiedImage(stored, true));
+			// Some origins block hotlinking but serve the proxy fine — but only when
+			// the user actually allows contacting wsrv.nl.
+			const fallbackUrl = resolveProxyFallbackUrl(stored, settings.useImageProxy);
+			if (fallbackUrl) bytes = await download(fallbackUrl);
 		}
 		if (!bytes) throw new Error("could not download the image");
 		if (bytes.byteLength === 0) throw new Error("empty response");
@@ -144,6 +146,20 @@ export async function applyLocalCover(app: App, note: TFile, image: TFile): Prom
 function previousLocalCover(app: App, note: TFile): string | null {
 	const fm = app.metadataCache.getFileCache(note)?.frontmatter ?? {};
 	return parseWikilink(coverValue(fm.image).trim());
+}
+
+/**
+ * Decide whether the origin-download failure should be retried through the wsrv.nl
+ * proxy, and with what URL. Returns null when the user has disabled the proxy: with
+ * `useImageProxy: false`, `proxiedImage` returns its input unchanged, so retrying
+ * would either repeat the exact same failed origin request, or — if `stored` happens
+ * to already be a proxied URL from when the setting was last on — silently contact
+ * wsrv.nl despite the user having turned it off. Both are wrong, so the fallback is
+ * skipped outright rather than attempted with a no-op flag.
+ */
+export function resolveProxyFallbackUrl(stored: string, useImageProxy: boolean): string | null {
+	if (!useImageProxy) return null;
+	return proxiedImage(stored, true);
 }
 
 /** GET the URL, returning its bytes, or null if the request failed. */
