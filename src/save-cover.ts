@@ -113,10 +113,11 @@ export function recordDownloadedAsset(settings: BookmarkerSettings, path: string
 /** Drop a local cover, restoring the plain "no cover" state. */
 export async function removeCover(app: App, note: TFile): Promise<void> {
 	try {
+		const previous = previousLocalCover(app, note);
 		await app.fileManager.processFrontMatter(note, (f: Record<string, unknown>) => {
 			f.image = "";
 		});
-		await rewriteCoverBody(app, note, null);
+		await rewriteCoverBody(app, note, null, previous);
 		new Notice("Bookmarker: cover removed.");
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error);
@@ -126,12 +127,25 @@ export async function removeCover(app: App, note: TFile): Promise<void> {
 
 /** Point the note's frontmatter and body at a vault image. */
 export async function applyLocalCover(app: App, note: TFile, image: TFile): Promise<void> {
+	const previous = previousLocalCover(app, note);
 	// Assign the plain string: the YAML emitter quotes `[[…]]`, and an unquoted
 	// wikilink would parse back as a nested array.
 	await app.fileManager.processFrontMatter(note, (f: Record<string, unknown>) => {
 		f.image = toWikilink(image.path);
 	});
-	await rewriteCoverBody(app, note, image.path);
+	await rewriteCoverBody(app, note, image.path, previous);
+}
+
+/**
+ * The vault path of the note's *current* cover, read before any mutation, but only
+ * when that cover is itself a local vault image (i.e. has a matching embed line the
+ * plugin could have written). A remote or absent cover has nothing of the plugin's
+ * in the body to find, so callers must pass null through in that case rather than
+ * let `rewriteCoverBody` guess.
+ */
+function previousLocalCover(app: App, note: TFile): string | null {
+	const fm = app.metadataCache.getFileCache(note)?.frontmatter ?? {};
+	return parseWikilink(coverValue(fm.image).trim());
 }
 
 /**
@@ -186,42 +200,74 @@ function sniffImageExtension(bytes: ArrayBuffer): string | null {
 
 /**
  * Sync the note body with the cover: drop the `image` key from the link-embed card
- * (it cannot render a vault path) and replace or insert the native embed. Passing
- * null removes the embed instead. Content further down (## Notes) is untouched.
+ * (it cannot render a vault path) and replace, remove, or insert the plugin's own
+ * native embed line. `previousImagePath` is the vault path of the cover *before*
+ * this change, but only when that cover itself had a matching body embed (i.e. it
+ * was a local vault image) — pass null when the previous cover was remote or absent.
+ *
+ * This is the only line the function will ever touch: it locates the embed by
+ * matching its link target against `previousImagePath`, never by "the first embed
+ * line found anywhere in the body". An unrelated embed elsewhere (e.g. under
+ * `## Notes`) is therefore never mutated, even when there is nothing of the
+ * plugin's to find (new note, or a previous cover that was remote).
  */
-async function rewriteCoverBody(app: App, note: TFile, imagePath: string | null): Promise<void> {
-	await app.vault.process(note, (data) => {
-		const end = frontmatterEnd(data);
-		const head = data.slice(0, end);
-		const lines = data.slice(end).split("\n");
+export async function rewriteCoverBody(
+	app: App,
+	note: TFile,
+	newImagePath: string | null,
+	previousImagePath: string | null,
+): Promise<void> {
+	await app.vault.process(note, (data) => syncCoverBody(data, newImagePath, previousImagePath));
+}
 
-		const fence = lines.findIndex((line) => line.trim() === "```embed");
-		if (fence !== -1) {
-			let close = lines.length;
-			for (let i = fence + 1; i < lines.length; i++) {
-				if (lines[i].trim() === "```") {
-					close = i;
-					break;
-				}
-			}
-			for (let i = close - 1; i > fence; i--) {
-				if (/^image:\s/.test(lines[i])) lines.splice(i, 1);
+/**
+ * Pure string transform behind `rewriteCoverBody`, split out so it can be unit
+ * tested without a live Obsidian `App`/`TFile`. See `rewriteCoverBody` for the
+ * ownership contract: only a line whose target equals `previousImagePath` is ever
+ * replaced or removed.
+ */
+export function syncCoverBody(
+	data: string,
+	newImagePath: string | null,
+	previousImagePath: string | null,
+): string {
+	const end = frontmatterEnd(data);
+	const head = data.slice(0, end);
+	const lines = data.slice(end).split("\n");
+
+	const fence = lines.findIndex((line) => line.trim() === "```embed");
+	if (fence !== -1) {
+		let close = lines.length;
+		for (let i = fence + 1; i < lines.length; i++) {
+			if (lines[i].trim() === "```") {
+				close = i;
+				break;
 			}
 		}
-
-		const existing = lines.findIndex((line) => EMBED_LINE.test(line));
-		if (imagePath === null) {
-			if (existing !== -1) lines.splice(existing, 1);
-		} else if (existing !== -1) {
-			// Replace, so repeated saves never stack embeds.
-			lines[existing] = `![[${imagePath}]]`;
-		} else {
-			const heading = lines.findIndex((line) => /^#\s/.test(line));
-			lines.splice(heading === -1 ? 0 : heading + 1, 0, "", `![[${imagePath}]]`);
+		for (let i = close - 1; i > fence; i--) {
+			if (/^image:\s/.test(lines[i])) lines.splice(i, 1);
 		}
+	}
 
-		return head + lines.join("\n");
-	});
+	const existing = previousImagePath === null ? -1 : findOwnedEmbedLine(lines, previousImagePath);
+	if (newImagePath === null) {
+		// Nothing of the plugin's to remove (previous cover was remote/absent):
+		// leave the rest of the body untouched.
+		if (existing !== -1) lines.splice(existing, 1);
+	} else if (existing !== -1) {
+		// Replace the plugin's own previous line, so repeated saves never stack embeds.
+		lines[existing] = `![[${newImagePath}]]`;
+	} else {
+		const heading = lines.findIndex((line) => /^#\s/.test(line));
+		lines.splice(heading === -1 ? 0 : heading + 1, 0, "", `![[${newImagePath}]]`);
+	}
+
+	return head + lines.join("\n");
+}
+
+/** Index of the standalone embed line whose link target is exactly `targetPath`. */
+function findOwnedEmbedLine(lines: string[], targetPath: string): number {
+	return lines.findIndex((line) => EMBED_LINE.test(line) && parseWikilink(line.trim()) === targetPath);
 }
 
 /** Index just past the closing "---" of the frontmatter block, or 0 if there is none. */
