@@ -36,7 +36,7 @@ export async function captureBookmark(
 	try {
 		const html = await fetchHtml(url);
 		const metadata = parseMetadata(html, url, settings.excerptLength);
-		const taxonomy = readTaxonomy(app, settings.rootFolder);
+		const taxonomy = readTaxonomy(app, settings.rootFolder, settings.brokenFolderName);
 		const classification = await classifyBookmark(
 			settings,
 			{

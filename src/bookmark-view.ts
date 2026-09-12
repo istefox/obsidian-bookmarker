@@ -1052,7 +1052,11 @@ export class BookmarkView extends ItemView {
 	}
 
 	private moveToCategory(item: BookmarkItem): void {
-		const folders = readTaxonomy(this.app, this.plugin.settings.rootFolder).folders;
+		const folders = readTaxonomy(
+			this.app,
+			this.plugin.settings.rootFolder,
+			this.plugin.settings.brokenFolderName,
+		).folders;
 		new FolderSuggestModal(this.app, folders, (rel) => {
 			void this.doMove(item, sanitizeFolderPath(rel));
 		}).open();
@@ -1078,7 +1082,11 @@ export class BookmarkView extends ItemView {
 		try {
 			const html = await fetchHtml(item.url);
 			const metadata = parseMetadata(html, item.url, this.plugin.settings.excerptLength);
-			const taxonomy = readTaxonomy(this.app, this.plugin.settings.rootFolder);
+			const taxonomy = readTaxonomy(
+				this.app,
+				this.plugin.settings.rootFolder,
+				this.plugin.settings.brokenFolderName,
+			);
 			const classification = await classifyBookmark(
 				this.plugin.settings,
 				{
