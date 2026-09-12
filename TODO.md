@@ -1,7 +1,7 @@
 <!-- project-tasks: prefix=BM lastId=19 -->
 # PROJECT TASKS
 
-Updated: 2026-09-12 · Open: 6 (P1: 0) · In progress: 0
+Updated: 2026-09-12 · Open: 5 (P1: 0) · In progress: 0
 
 ## GitHub Issues
 
@@ -17,8 +17,6 @@ below was re-verified line-by-line this session and is still present, none alrea
 Ordered for closure: content-loss and privacy risks first, then security, then defects with a
 workaround, then documentation/housekeeping.
 
-- [ ] `BM-014` **P3** npm audit still reports 4 dev-only advisories (brace-expansion, fast-uri, js-yaml high; esbuild moderate), none reachable from runtime — `package-lock.json` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Standalone maintenance PR, different cadence/testing than the feature fixes
 - [ ] `BM-015` **P3** CONTRIBUTING.md says "run all three" but lists two commands, and implies CI checks both when release.yml only runs the build on tag push — `CONTRIBUTING.md` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
   - Chain: BM-015 + BM-016 + BM-017 + BM-018, one PR — docs/comment housekeeping only, zero functional risk
 - [ ] `BM-016` **P3** CONTRIBUTING.md describes `ui/sentence-case` lint warnings as tolerated false positives, the rule is actually set to `"off"` — `eslint.config.mjs:20` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
@@ -66,3 +64,4 @@ _none_
 - [x] `BM-012` Tag-panel counts, folder/type dropdown options, and the "Insert bookmark link" picker no longer leak hidden bookmarks' tags/folders/types/existence; the board-side surfaces now share a `visibleItems(items, showHidden)` helper matching the grid's own hidden check, and the global insert-link picker (no session/lock state to check) now excludes hidden notes unconditionally (2026-09-12)
 - [x] `BM-002` Cover ownership is now tracked by an explicit `settings.downloadedAssets` registry (populated only by `saveCoverToVault`, cleared on reclaim) instead of inferring "plugin-owned" from folder location, so a user's own image under `_assets/` can no longer be silently swept when its bookmark note is deleted (decision: explicit ownership tag) (2026-09-12)
 - [x] `BM-013` Favicon fallback and automatic Wayback snapshot now actually implement their advertised settings: capture/refresh fall back to a favicon service when the page declares none and the setting is on, and capture fires a background (never-awaited) Wayback Save Page Now request when its setting is on (decision: implement the advertised behavior) (2026-09-12)
+- [x] `BM-014` `npm audit fix` resolved the 3 non-breaking dev-only advisories (brace-expansion, fast-uri, js-yaml, all transitive); the remaining esbuild moderate advisory is left as an accepted, dev-only, breaking-change-gated risk (bumping the pinned `0.20.0` to `0.28.2` requires `--force` per npm's own classification) (2026-09-12)
