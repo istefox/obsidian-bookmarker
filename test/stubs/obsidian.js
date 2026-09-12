@@ -83,8 +83,20 @@ class WorkspaceLeaf {}
 function debounce(fn) {
 	return fn;
 }
-async function requestUrl() {
+async function defaultRequestUrlImpl() {
 	throw new Error("requestUrl stub: not implemented for tests");
+}
+let requestUrlImpl = defaultRequestUrlImpl;
+async function requestUrl(...args) {
+	return requestUrlImpl(...args);
+}
+/** Test-only hook: install a mock implementation of requestUrl. */
+function __setRequestUrlImpl(fn) {
+	requestUrlImpl = fn;
+}
+/** Test-only hook: restore requestUrl's default (throwing) implementation. */
+function __resetRequestUrlImpl() {
+	requestUrlImpl = defaultRequestUrlImpl;
 }
 function setIcon() {}
 function stringifyYaml(value) {
@@ -111,6 +123,8 @@ module.exports = {
 	WorkspaceLeaf,
 	debounce,
 	requestUrl,
+	__setRequestUrlImpl,
+	__resetRequestUrlImpl,
 	setIcon,
 	stringifyYaml,
 };
