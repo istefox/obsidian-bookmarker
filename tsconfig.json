@@ -8,7 +8,6 @@
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
-    "allowImportingTsExtensions": true,
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,

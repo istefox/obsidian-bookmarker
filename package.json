@@ -7,7 +7,7 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "node --test src/**/*.test.ts",
+    "test": "tsc -p tsconfig.test.json && NODE_PATH=test/stubs node --test .node-test-out/test",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [

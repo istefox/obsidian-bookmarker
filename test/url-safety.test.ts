@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
-import { isSafeRemoteUrl } from "./url-safety.ts";
+import { isSafeRemoteUrl } from "../src/url-safety";
 
 // Regression cases for BM-005: two isPrivateHost misclassifications.
 // 1) An IPv4-mapped IPv6 loopback bypassed the guard because the URL parser
