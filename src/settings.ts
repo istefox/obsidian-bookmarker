@@ -37,6 +37,10 @@ export interface BookmarkerSettings {
 	bookmarkBarMaxFavorites: number;
 	/** SHA-256 hex of the soft-lock password for the Hidden toggle ("" / null = no lock). Not encryption. */
 	hiddenLockHash: string | null;
+	/** Vault paths of cover images this plugin itself downloaded (via saveCoverToVault),
+	 * the authoritative ownership record for cover-gc's cleanup — never a file the user
+	 * picked from elsewhere in the vault or placed manually, even if it lives in _assets/. */
+	downloadedAssets: string[];
 }
 
 export const DEFAULT_SETTINGS: BookmarkerSettings = {
@@ -66,6 +70,7 @@ export const DEFAULT_SETTINGS: BookmarkerSettings = {
 	showBookmarkBar: false,
 	bookmarkBarMaxFavorites: 12,
 	hiddenLockHash: null,
+	downloadedAssets: [],
 };
 
 export class BookmarkerSettingTab extends PluginSettingTab {

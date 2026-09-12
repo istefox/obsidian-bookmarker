@@ -37,3 +37,23 @@ function closestSnapshotUrl(json: unknown): string | null {
 function asRecord(value: unknown): Record<string, unknown> | null {
 	return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
+
+/**
+ * Ask the Wayback Machine to snapshot `url` right now, via its Save Page Now
+ * endpoint. Fire-and-forget: never awaited by the caller, never throws, and any
+ * failure (rate limit, timeout, network) is silently swallowed — this is a
+ * best-effort background nicety, not something the user should ever see fail.
+ */
+export function triggerWaybackSnapshot(url: string): void {
+	const endpoint = `https://web.archive.org/save/${url}`;
+	void (async () => {
+		try {
+			await withTimeout(
+				requestUrl({ url: endpoint, method: "GET", throw: false }),
+				TIMEOUT_MS,
+			);
+		} catch {
+			// Best-effort; nothing to do on failure.
+		}
+	})();
+}

@@ -1,6 +1,7 @@
 import { App, TFile } from "obsidian";
+import type BookmarkerPlugin from "./main";
 import type { BookmarkerSettings } from "./settings";
-import { assetsFolder, coverValue, isImageFile, parseWikilink } from "./cover";
+import { coverValue, isImageFile, parseWikilink } from "./cover";
 
 /**
  * Deleting a bookmark used to leave its downloaded cover in `_assets/` forever.
@@ -33,10 +34,10 @@ export function coverAsset(app: App, note: TFile): TFile | null {
  * leaves the already-successful note deletion untouched.
  */
 export async function trashBookmarks(
-	app: App,
-	settings: BookmarkerSettings,
+	plugin: BookmarkerPlugin,
 	notes: TFile[],
 ): Promise<TrashResult> {
+	const { app, settings } = plugin;
 	// Read the covers before anything is trashed — a deleted note's frontmatter is
 	// no longer readable, and the metadata cache updates on its own schedule.
 	const covers = new Map<string, TFile>();
@@ -63,25 +64,34 @@ export async function trashBookmarks(
 	// asset is found by the scan below and kept.
 	const removed = new Set(trashed.map((file) => file.path));
 	let coversRemoved = 0;
+	let registryChanged = false;
 	for (const asset of covers.values()) {
 		if (isReferenced(app, asset, removed)) continue;
 		try {
 			await app.fileManager.trashFile(asset);
 			coversRemoved++;
+			const index = settings.downloadedAssets.indexOf(asset.path);
+			if (index !== -1) {
+				settings.downloadedAssets.splice(index, 1);
+				registryChanged = true;
+			}
 		} catch (error) {
 			console.warn(`[bookmarker] cover cleanup failed for ${asset.path}:`, error);
 		}
 	}
+	if (registryChanged) await plugin.saveSettings();
 
 	return { trashed, failed, coversRemoved };
 }
 
 /**
- * True only for a file this plugin downloaded into its own assets folder. An image
- * the user picked from elsewhere in the vault is theirs and outlives the bookmark.
+ * True only for a file this plugin itself downloaded, per the `downloadedAssets`
+ * registry — never inferred from folder location. An image the user picked from
+ * elsewhere in the vault (or placed manually, even under `_assets/`) is theirs and
+ * outlives the bookmark.
  */
 function isDownloadedAsset(path: string, settings: BookmarkerSettings): boolean {
-	return path.startsWith(`${assetsFolder(settings.rootFolder)}/`);
+	return new Set(settings.downloadedAssets).has(path);
 }
 
 /**

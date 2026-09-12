@@ -1,7 +1,7 @@
-<!-- project-tasks: prefix=BM lastId=18 -->
+<!-- project-tasks: prefix=BM lastId=19 -->
 # PROJECT TASKS
 
-Updated: 2026-09-12 · Open: 17 (P1: 4) · In progress: 0
+Updated: 2026-09-12 · Open: 6 (P1: 0) · In progress: 0
 
 ## GitHub Issues
 
@@ -17,24 +17,6 @@ below was re-verified line-by-line this session and is still present, none alrea
 Ordered for closure: content-loss and privacy risks first, then security, then defects with a
 workaround, then documentation/housekeeping.
 
-- [ ] `BM-001` **P1** Removing/replacing a cover can delete an unrelated embed or paragraph elsewhere in the note body — `src/save-cover.ts:183` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Chain: BM-001 + BM-006, one PR — both go through `rewriteCoverBody` and its call sites (removeCover/applyLocalCover/applyRefresh)
-- [ ] `BM-002` **P1** Deleting a bookmark can also delete a manually-placed image, ownership is inferred from folder path alone — `src/cover-gc.ts:83` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Related to the BM-001/BM-006 cover chain but needs its own decision first (explicit ownership tag vs. redefining `_assets` as fully plugin-managed) — recommend a separate PR
-- [ ] `BM-003` **P1** Disabling the image proxy is not a full opt-out, the origin-download fallback still calls wsrv.nl — `src/save-cover.ts:73` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-004` **P1** An open board with zero selected/visible cards silently expands bulk AI classification to the whole vault, including hidden bookmarks, before any approval — `src/organize-ai.ts:158` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Chain: BM-004 + BM-007 + BM-009, one PR — all feed the same organize/classify pipeline (`organize-ai.ts` + the `taxonomy.ts` it reads)
-- [ ] `BM-006` **P2** Refreshing a card updates frontmatter and file location but never resyncs the body embed, board and note can show different covers — `src/refresh-card.ts:115` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-007` **P2** A capped AI classification batch always slices from index 0, re-running never reaches later bookmarks despite the "re-run to continue" message — `src/organize-ai.ts:97` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-008` **P2** Bookmark dedup only merges tags, favorite and one-line Notes bullets, other paragraphs/sections/custom properties in the trashed duplicate are silently dropped — `src/organize-dedup.ts:119` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-009` **P2** Folder taxonomy offered to the classifier includes internal `_assets`/`_broken` subfolders as ordinary destinations — `src/taxonomy.ts:32` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-010` **P2** Ticking a card's checkbox does not refresh the "Hide selected"/"Delete broken" buttons, only a full redraw does — `src/bookmark-view.ts:826` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Chain: BM-010 + BM-011, one PR — same file, independent mechanical board-state fixes
-- [ ] `BM-011` **P2** Related-bookmarks mode bypasses search/scope/all other filters entirely — `src/bookmark-view.ts:734` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-012` **P2** The hidden-bookmarks password is cosmetic only, tag counts, folder/type options and the insert-link picker all still read/list hidden bookmarks — `src/bookmark-view.ts:581` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - File overlaps BM-010/BM-011 (`bookmark-view.ts`) but is privacy-sensitive — fold into that PR only if review depth stays adequate, otherwise keep separate
-- [ ] `BM-013` **P2** favicon-fallback and automatic-Wayback settings are shown in the UI and saved but never read anywhere in the runtime — `src/settings.ts:269` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Needs a decision first: retire the controls, or implement the advertised behavior
 - [ ] `BM-014` **P3** npm audit still reports 4 dev-only advisories (brace-expansion, fast-uri, js-yaml high; esbuild moderate), none reachable from runtime — `package-lock.json` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
   - Standalone maintenance PR, different cadence/testing than the feature fixes
 - [ ] `BM-015` **P3** CONTRIBUTING.md says "run all three" but lists two commands, and implies CI checks both when release.yml only runs the build on tag push — `CONTRIBUTING.md` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
@@ -42,6 +24,8 @@ workaround, then documentation/housekeeping.
 - [ ] `BM-016` **P3** CONTRIBUTING.md describes `ui/sentence-case` lint warnings as tolerated false positives, the rule is actually set to `"off"` — `eslint.config.mjs:20` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
 - [ ] `BM-017` **P3** Stale source comments: "M4/M5 fallbacks layer on later" (already shipped), board called "read-only" (fully interactive), search called "fuzzy" (substring-token-AND) — `src/capture.ts:17` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
 - [ ] `BM-018` **P3** Completed historical implementation plan still in the public tree, with stale code-location references — `docs/superpowers/plans/2026-06-16-hide-bookmarks.md` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
+- [ ] `BM-019` **P3** `readTaxonomy` only excludes the broken-folder by its default name at 3 call sites (`capture.ts`, `bookmark-view.ts`, `refresh-card.ts`), a user-customized `brokenFolderName` still leaks through as an ordinary destination there — `src/taxonomy.ts` <!-- src:session kind:fix opened:2026-09-12 -->
+  - Surfaced by the BM-009 fix (fix/organize-ai-pipeline branch); those 3 call sites need to pass `settings.brokenFolderName` the same way `organize-ai.ts` now does
 
 ## In Progress
 
@@ -70,3 +54,15 @@ _none_
 ## Done
 
 - [x] `BM-005` URL safety guard fixed: IPv4-mapped IPv6 (dotted + compressed hex form) and DNS-hostname-vs-IPv6-literal disambiguation, regression tests added (2026-09-12)
+- [x] `BM-001` Cover-body sync now only ever touches the plugin's own previously-inserted embed line, never an unrelated one (2026-09-12)
+- [x] `BM-006` Card refresh now resyncs the body embed with the new frontmatter cover instead of leaving it stale (2026-09-12)
+- [x] `BM-004` Board with zero visible/selected cards now yields zero AI candidates instead of falling back to the whole vault; whole-vault fallback only applies with no board open at all (2026-09-12)
+- [x] `BM-007` Capped AI batches now advance per-command (bulk-retag / suggest-folder-moves independently), re-running actually reaches later bookmarks (2026-09-12)
+- [x] `BM-009` Taxonomy offered to the classifier now excludes the plugin's internal `_assets` and broken-link folders (known gap: 3 other call sites still exclude only the default `_broken` name, not a customized one — see `taxonomy.ts` doc comment) (2026-09-12)
+- [x] `BM-003` Proxy opt-out now skips the fallback entirely when disabled, including when the stored cover is already a wsrv.nl URL from a prior setting (2026-09-12)
+- [x] `BM-010` Per-card checkbox change now triggers `renderGrid()`, so "Delete broken"/"Hide selected" button visibility updates immediately, matching the select-all/clear-selection pattern (2026-09-12)
+- [x] `BM-011` Related-bookmarks mode now applies the same search/scope/domain/folder/type/favorites/broken/tag filters as normal mode, narrowing candidates before ranking/`MAX_RELATED` truncation instead of bypassing them (2026-09-12)
+- [x] `BM-008` Dedup merge now also preserves the victim's custom (non-schema) frontmatter properties, not already set on the keeper, and any other body content beyond the Notes bullets (appended under a clearly attributed "Merged from duplicate" section), instead of silently dropping them (2026-09-12)
+- [x] `BM-012` Tag-panel counts, folder/type dropdown options, and the "Insert bookmark link" picker no longer leak hidden bookmarks' tags/folders/types/existence; the board-side surfaces now share a `visibleItems(items, showHidden)` helper matching the grid's own hidden check, and the global insert-link picker (no session/lock state to check) now excludes hidden notes unconditionally (2026-09-12)
+- [x] `BM-002` Cover ownership is now tracked by an explicit `settings.downloadedAssets` registry (populated only by `saveCoverToVault`, cleared on reclaim) instead of inferring "plugin-owned" from folder location, so a user's own image under `_assets/` can no longer be silently swept when its bookmark note is deleted (decision: explicit ownership tag) (2026-09-12)
+- [x] `BM-013` Favicon fallback and automatic Wayback snapshot now actually implement their advertised settings: capture/refresh fall back to a favicon service when the page declares none and the setting is on, and capture fires a background (never-awaited) Wayback Save Page Now request when its setting is on (decision: implement the advertised behavior) (2026-09-12)
