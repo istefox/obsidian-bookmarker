@@ -2,6 +2,12 @@
 
 ADR: `docs/architecture/ADR-002-hide-bookmarks.md`
 
+**Status: implemented and shipped.** Kept for historical record only — the
+code references below (file names, line numbers, surrounding context) reflect
+the codebase as it stood on 2026-06-16 and are not guaranteed to still match
+current line numbers or structure. For the current implementation, read the
+source directly; for the design rationale, see the ADR above.
+
 ---
 
 ## Task 1 — Extend `BookmarkItem` and `loadBookmarks`

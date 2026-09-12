@@ -14,8 +14,8 @@ import { BookmarkDraft, Taxonomy } from "./types";
 
 /**
  * Capture pipeline: fetch → parse metadata → read taxonomy → classify (tags +
- * folder) → optional review modal → write the note. The Microlink/favicon/Wayback
- * fallbacks (M4/M5) layer on top of this later.
+ * folder) → optional review modal → write the note, with the Microlink image
+ * fallback, favicon fallback, and Wayback archive snapshot all wired in.
  */
 export async function captureBookmark(
 	plugin: BookmarkerPlugin,

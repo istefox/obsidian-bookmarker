@@ -1,7 +1,7 @@
 <!-- project-tasks: prefix=BM lastId=19 -->
 # PROJECT TASKS
 
-Updated: 2026-09-12 · Open: 5 (P1: 0) · In progress: 0
+Updated: 2026-09-12 · Open: 1 (P1: 0) · In progress: 0
 
 ## GitHub Issues
 
@@ -17,11 +17,6 @@ below was re-verified line-by-line this session and is still present, none alrea
 Ordered for closure: content-loss and privacy risks first, then security, then defects with a
 workaround, then documentation/housekeeping.
 
-- [ ] `BM-015` **P3** CONTRIBUTING.md says "run all three" but lists two commands, and implies CI checks both when release.yml only runs the build on tag push — `CONTRIBUTING.md` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Chain: BM-015 + BM-016 + BM-017 + BM-018, one PR — docs/comment housekeeping only, zero functional risk
-- [ ] `BM-016` **P3** CONTRIBUTING.md describes `ui/sentence-case` lint warnings as tolerated false positives, the rule is actually set to `"off"` — `eslint.config.mjs:20` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-017` **P3** Stale source comments: "M4/M5 fallbacks layer on later" (already shipped), board called "read-only" (fully interactive), search called "fuzzy" (substring-token-AND) — `src/capture.ts:17` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-- [ ] `BM-018` **P3** Completed historical implementation plan still in the public tree, with stale code-location references — `docs/superpowers/plans/2026-06-16-hide-bookmarks.md` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
 - [ ] `BM-019` **P3** `readTaxonomy` only excludes the broken-folder by its default name at 3 call sites (`capture.ts`, `bookmark-view.ts`, `refresh-card.ts`), a user-customized `brokenFolderName` still leaks through as an ordinary destination there — `src/taxonomy.ts` <!-- src:session kind:fix opened:2026-09-12 -->
   - Surfaced by the BM-009 fix (fix/organize-ai-pipeline branch); those 3 call sites need to pass `settings.brokenFolderName` the same way `organize-ai.ts` now does
 
@@ -65,3 +60,6 @@ _none_
 - [x] `BM-002` Cover ownership is now tracked by an explicit `settings.downloadedAssets` registry (populated only by `saveCoverToVault`, cleared on reclaim) instead of inferring "plugin-owned" from folder location, so a user's own image under `_assets/` can no longer be silently swept when its bookmark note is deleted (decision: explicit ownership tag) (2026-09-12)
 - [x] `BM-013` Favicon fallback and automatic Wayback snapshot now actually implement their advertised settings: capture/refresh fall back to a favicon service when the page declares none and the setting is on, and capture fires a background (never-awaited) Wayback Save Page Now request when its setting is on (decision: implement the advertised behavior) (2026-09-12)
 - [x] `BM-014` `npm audit fix` resolved the 3 non-breaking dev-only advisories (brace-expansion, fast-uri, js-yaml, all transitive); the remaining esbuild moderate advisory is left as an accepted, dev-only, breaking-change-gated risk (bumping the pinned `0.20.0` to `0.28.2` requires `--force` per npm's own classification) (2026-09-12)
+- [x] `BM-015`+`BM-016` CONTRIBUTING.md now says "run both" (matching the two actual commands) and correctly describes `ui/sentence-case` as disabled rather than "tolerated warnings"; its CI paragraph was updated a second time during this merge to describe `ci.yml` (build+lint+test on every PR/push to `main`, merged after this branch was created) instead of the now-superseded "release.yml only runs the build on tag push" claim (2026-09-12)
+- [x] `BM-017` Stale source comments fixed: capture.ts's pipeline doc comment now describes the shipped Microlink/favicon/Wayback fallbacks instead of "layers on later"; the board is now described as fully interactive instead of "read-only"; search is now described as substring/AND instead of "fuzzy" (2026-09-12)
+- [x] `BM-018` The completed hide-bookmarks plan doc now carries a "Status: implemented and shipped" header disclosing that its file/line references reflect 2026-06-16's codebase and may not match current structure, pointing readers to the ADR and source instead (2026-09-12)
