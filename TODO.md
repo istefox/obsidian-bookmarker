@@ -1,7 +1,7 @@
 <!-- project-tasks: prefix=BM lastId=19 -->
 # PROJECT TASKS
 
-Updated: 2026-09-12 · Open: 7 (P1: 0) · In progress: 0
+Updated: 2026-09-12 · Open: 6 (P1: 0) · In progress: 0
 
 ## GitHub Issues
 
@@ -17,8 +17,6 @@ below was re-verified line-by-line this session and is still present, none alrea
 Ordered for closure: content-loss and privacy risks first, then security, then defects with a
 workaround, then documentation/housekeeping.
 
-- [ ] `BM-013` **P2** favicon-fallback and automatic-Wayback settings are shown in the UI and saved but never read anywhere in the runtime — `src/settings.ts:269` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - Needs a decision first: retire the controls, or implement the advertised behavior
 - [ ] `BM-014` **P3** npm audit still reports 4 dev-only advisories (brace-expansion, fast-uri, js-yaml high; esbuild moderate), none reachable from runtime — `package-lock.json` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
   - Standalone maintenance PR, different cadence/testing than the feature fixes
 - [ ] `BM-015` **P3** CONTRIBUTING.md says "run all three" but lists two commands, and implies CI checks both when release.yml only runs the build on tag push — `CONTRIBUTING.md` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
@@ -67,3 +65,4 @@ _none_
 - [x] `BM-008` Dedup merge now also preserves the victim's custom (non-schema) frontmatter properties, not already set on the keeper, and any other body content beyond the Notes bullets (appended under a clearly attributed "Merged from duplicate" section), instead of silently dropping them (2026-09-12)
 - [x] `BM-012` Tag-panel counts, folder/type dropdown options, and the "Insert bookmark link" picker no longer leak hidden bookmarks' tags/folders/types/existence; the board-side surfaces now share a `visibleItems(items, showHidden)` helper matching the grid's own hidden check, and the global insert-link picker (no session/lock state to check) now excludes hidden notes unconditionally (2026-09-12)
 - [x] `BM-002` Cover ownership is now tracked by an explicit `settings.downloadedAssets` registry (populated only by `saveCoverToVault`, cleared on reclaim) instead of inferring "plugin-owned" from folder location, so a user's own image under `_assets/` can no longer be silently swept when its bookmark note is deleted (decision: explicit ownership tag) (2026-09-12)
+- [x] `BM-013` Favicon fallback and automatic Wayback snapshot now actually implement their advertised settings: capture/refresh fall back to a favicon service when the page declares none and the setting is on, and capture fires a background (never-awaited) Wayback Save Page Now request when its setting is on (decision: implement the advertised behavior) (2026-09-12)
