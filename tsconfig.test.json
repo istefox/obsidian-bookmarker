@@ -2,7 +2,8 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"module": "commonjs",
-		"outDir": ".node-test-out",
+		"rootDir": ".",
+		"outDir": "node-test-out",
 		"noEmit": false,
 		"esModuleInterop": true,
 		"skipLibCheck": true

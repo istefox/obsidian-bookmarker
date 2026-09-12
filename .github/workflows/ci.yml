@@ -1,0 +1,44 @@
+name: CI
+
+# Runs the same checks CONTRIBUTING.md asks contributors to run locally
+# (build + lint) on every pull request and on every push to main, so a
+# regression is caught before merge instead of only at tag/release time.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: |
+          if node -e "process.exit(require('./package.json').scripts.test ? 0 : 1)"; then
+            npm test
+          else
+            echo "No 'test' script in package.json on this branch yet — skipping."
+          fi

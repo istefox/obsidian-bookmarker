@@ -1,5 +1,6 @@
 import { App, Notice, normalizePath, requestUrl, TFile } from "obsidian";
 import type BookmarkerPlugin from "./main";
+import type { BookmarkerSettings } from "./settings";
 import { assetsFolder, coverValue, parseWikilink, toWikilink } from "./cover";
 import { ImageSuggestModal, listVaultImages } from "./image-suggest";
 import { proxiedImage, unproxiedImage } from "./image";
@@ -84,6 +85,7 @@ export async function saveCoverToVault(plugin: BookmarkerPlugin, note: TFile): P
 		const name = uniqueName(app, dir, note.basename, ext);
 		const path = normalizePath(`${dir}/${name}.${ext}`);
 		const created = await app.vault.createBinary(path, bytes);
+		if (recordDownloadedAsset(settings, created.path)) await plugin.saveSettings();
 
 		await applyLocalCover(app, note, created);
 		new Notice(`Bookmarker: cover saved to ${path}`);
@@ -93,6 +95,17 @@ export async function saveCoverToVault(plugin: BookmarkerPlugin, note: TFile): P
 	} finally {
 		notice.hide();
 	}
+}
+
+/**
+ * Record `path` as plugin-downloaded, the ownership registry cover-gc trusts to
+ * decide what it may delete. Deduped: returns false (nothing to persist) if `path`
+ * is already recorded.
+ */
+export function recordDownloadedAsset(settings: BookmarkerSettings, path: string): boolean {
+	if (settings.downloadedAssets.includes(path)) return false;
+	settings.downloadedAssets.push(path);
+	return true;
 }
 
 /** Drop a local cover, restoring the plain "no cover" state. */
