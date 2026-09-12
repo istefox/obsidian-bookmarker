@@ -1,6 +1,5 @@
 import { App, Notice, TFile } from "obsidian";
 import type BookmarkerPlugin from "./main";
-import type { BookmarkerSettings } from "./settings";
 import { trashBookmarks } from "./cover-gc";
 import { normalizeUrl } from "./duplicates";
 import { OrganizeModal, OrganizeRow, OrganizeSelection } from "./organize-modal";
@@ -77,16 +76,16 @@ export async function deduplicateBookmarks(plugin: BookmarkerPlugin): Promise<vo
 		intro: `${rows.length} duplicate note(s) across ${duplicateGroups.length} group(s). Checked notes are merged into the kept note and deleted.`,
 		rows: rows.map((r) => r.row),
 		applyLabel: "Merge & delete",
-		onApply: (selected) => applyDedup(app, settings, byId, selected),
+		onApply: (selected) => applyDedup(plugin, byId, selected),
 	}).open();
 }
 
 async function applyDedup(
-	app: App,
-	settings: BookmarkerSettings,
+	plugin: BookmarkerPlugin,
 	byId: Map<string, DedupRow>,
 	selected: OrganizeSelection[],
 ): Promise<void> {
+	const { app } = plugin;
 	// Two phases: never trash a victim whose merge into the keeper failed, so a
 	// partial failure leaves the duplicate intact rather than silently lost.
 	const merged: TFile[] = [];
@@ -104,7 +103,7 @@ async function applyDedup(
 	}
 
 	// Trashing the whole batch at once lets two victims sharing one cover release it.
-	const result = await trashBookmarks(app, settings, merged);
+	const result = await trashBookmarks(plugin, merged);
 	failed += result.failed;
 	const tail = failed ? `, ${failed} failed` : "";
 	const covers = result.coversRemoved

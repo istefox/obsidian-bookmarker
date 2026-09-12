@@ -992,7 +992,7 @@ export class BookmarkView extends ItemView {
 	private async deleteBookmark(item: BookmarkItem): Promise<void> {
 		// The board auto-refreshes from the vault delete event. A downloaded cover
 		// nothing else points at goes with the note.
-		const { failed } = await trashBookmarks(this.app, this.plugin.settings, [item.file]);
+		const { failed } = await trashBookmarks(this.plugin, [item.file]);
 		if (failed) new Notice("Delete failed — see the console for details.");
 	}
 
@@ -1020,8 +1020,7 @@ export class BookmarkView extends ItemView {
 		);
 		if (targets.length === 0) return;
 		const { trashed, failed } = await trashBookmarks(
-			this.app,
-			this.plugin.settings,
+			this.plugin,
 			targets.map((item) => item.file),
 		);
 		for (const file of trashed) this.selected.delete(file.path);
