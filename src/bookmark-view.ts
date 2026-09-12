@@ -22,7 +22,7 @@ export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
 const MAX_RELATED = 50;
 
-/** Raindrop-like board: a grid of cover cards for the saved bookmarks (read-only). */
+/** Raindrop-like board: a grid of cover cards for the saved bookmarks, fully interactive. */
 export class BookmarkView extends ItemView {
 	private readonly plugin: BookmarkerPlugin;
 	private items: BookmarkItem[] = [];
@@ -1110,7 +1110,7 @@ export class BookmarkView extends ItemView {
 
 }
 
-/** The text a fuzzy search runs against for one bookmark. */
+/** The text a search runs against for one bookmark (substring, AND across terms). */
 function haystack(item: BookmarkItem): string {
 	return `${item.title} ${item.domain} ${item.url} ${item.tags.join(" ")} ${item.description}`;
 }

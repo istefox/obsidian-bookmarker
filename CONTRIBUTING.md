@@ -13,14 +13,16 @@ To try your build in Obsidian, copy `main.js`, `manifest.json`, and `styles.css`
 
 ## Before you open a pull request
 
-Run all three. The CI and the reviewer expect them green:
+Run both locally before opening a PR; the reviewer expects them green:
 
 ```bash
 npm run build    # type-check + production bundle
 npm run lint     # eslint-plugin-obsidianmd rules
 ```
 
-`npm run lint` may print a few `ui/sentence-case` warnings on proper nouns and URLs. Those are known false positives, kept on purpose. New errors are not acceptable.
+CI (`.github/workflows/release.yml`) only runs `npm run build` on a semver tag push, not on pull requests, so `npm run lint` is not enforced automatically — run it yourself.
+
+The `obsidianmd/ui/sentence-case` rule is disabled project-wide (`eslint.config.mjs`): it would lowercase proper nouns (Wayback Machine, Pocket, Raindrop, Netscape), URL/protocol examples, and key prefixes (`sk-ant-`) that must stay as-is.
 
 ## Mobile-safe constraints
 
