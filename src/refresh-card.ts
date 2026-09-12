@@ -1,7 +1,7 @@
 import { App, Notice, normalizePath, TFile } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { fetchHtml, parseMetadata } from "./metadata";
-import { fetchScreenshot, proxiedImage } from "./image";
+import { fetchScreenshot, proxiedImage, resolveFaviconUrl } from "./image";
 import { isSafeRemoteUrl } from "./url-safety";
 import { probeUrl } from "./link-check";
 import { classifyBookmark } from "./classifier";
@@ -82,7 +82,11 @@ export async function refreshBookmarkCard(plugin: BookmarkerPlugin, file: TFile)
 			tags: classification.tags,
 			folder: classification.folder || relativeFolder(file, settings.rootFolder),
 			imageUrl: localCover ?? candidates[0] ?? null,
-			faviconUrl: metadata.faviconUrl,
+			faviconUrl: resolveFaviconUrl(
+				metadata.faviconUrl,
+				metadata.domain,
+				settings.enableFaviconFallback,
+			),
 			domain: metadata.domain,
 			type: metadata.type || asString(fm.type) || "link",
 			favorite: fm.favorite === true,
