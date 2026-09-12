@@ -9,13 +9,15 @@ import { readTaxonomy } from "./taxonomy";
 import { ReviewModal } from "./review-modal";
 import { ensureFolder, sanitizeFileName, sanitizeFolderPath } from "./note-writer";
 import { assetsFolder, coverValue, parseWikilink } from "./cover";
+import { rewriteCoverBody } from "./save-cover";
 import { BookmarkDraft } from "./types";
 
 /**
  * Re-run the capture pipeline on an existing bookmark: check whether the URL is
  * broken, re-fetch its metadata and cover, re-classify tags and folder, then open
  * the review window pre-filled with the fresh proposal. Applying updates the note's
- * frontmatter, cover, and folder while leaving the body (e.g. ## Notes) untouched.
+ * frontmatter, cover (body embed included), and folder while leaving the rest of
+ * the body (e.g. ## Notes) untouched.
  */
 export async function refreshBookmarkCard(plugin: BookmarkerPlugin, file: TFile): Promise<void> {
 	const { app, settings } = plugin;
@@ -123,6 +125,18 @@ async function applyRefresh(
 ): Promise<void> {
 	const { app, settings } = plugin;
 	try {
+		// Read the pre-refresh cover before it's mutated, so the body sync below can
+		// find (and only find) the plugin's own previous embed line, never an
+		// unrelated one elsewhere in the note.
+		const prevFm = app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+		const previousLocalCover = parseWikilink(coverValue(prevFm.image).trim());
+
+		// Only ever overwrite the cover with a non-empty value: a refetch that found
+		// nothing must not erase a cover the user chose (or a good one whose page has
+		// since dropped its og:image). Use "Remove cover" to clear. `null` here means
+		// leave the existing frontmatter `image` (and body) exactly as-is.
+		const resolvedCover = resolveRefreshCover(draft.imageUrl, settings.useImageProxy);
+
 		await app.fileManager.processFrontMatter(file, (f: Record<string, unknown>) => {
 			f.title = draft.title;
 			f.description = draft.description;
@@ -130,17 +144,15 @@ async function applyRefresh(
 			f.favorite = draft.favorite;
 			f.tags = draft.tags;
 			f.broken = false;
-			// Only ever overwrite the cover with a non-empty value: a refetch that
-			// found nothing must not erase a cover the user chose (or a good one
-			// whose page has since dropped its og:image). Use "Remove cover" to clear.
-			const chosen = draft.imageUrl ?? "";
-			if (parseWikilink(chosen)) {
-				f.image = chosen;
-			} else if (chosen && isSafeRemoteUrl(chosen)) {
-				f.image = proxiedImage(chosen, settings.useImageProxy);
-			}
+			if (resolvedCover) f.image = resolvedCover.frontmatterImage;
 			if (draft.faviconUrl && isSafeRemoteUrl(draft.faviconUrl)) f.favicon = draft.faviconUrl;
 		});
+
+		// Keep the note body's embed in sync with the frontmatter `image` that was
+		// just written. Left untouched when the cover field itself was left untouched.
+		if (resolvedCover) {
+			await rewriteCoverBody(app, file, resolvedCover.newLocalCover, previousLocalCover);
+		}
 
 		const root = normalizePath(settings.rootFolder);
 		const rel = sanitizeFolderPath(draft.folder);
@@ -163,6 +175,27 @@ async function applyRefresh(
 		const msg = error instanceof Error ? error.message : String(error);
 		new Notice(`Refresh failed: ${msg}`);
 	}
+}
+
+/**
+ * What a refresh's chosen cover means for frontmatter and body. `null` when there is
+ * nothing to change (no candidate, or one that fails validation) — the caller must
+ * then leave both frontmatter and body exactly as they were. Otherwise the value to
+ * write to frontmatter `image`, plus the vault target for the body embed sync (null
+ * when the new cover is remote, since a remote cover has no body embed of its own).
+ * Pure so it can be unit tested without a live Obsidian `App`/`TFile`.
+ */
+export function resolveRefreshCover(
+	imageUrl: string | null,
+	useImageProxy: boolean,
+): { frontmatterImage: string; newLocalCover: string | null } | null {
+	const chosen = imageUrl ?? "";
+	const localTarget = parseWikilink(chosen);
+	if (localTarget) return { frontmatterImage: chosen, newLocalCover: localTarget };
+	if (chosen && isSafeRemoteUrl(chosen)) {
+		return { frontmatterImage: proxiedImage(chosen, useImageProxy), newLocalCover: null };
+	}
+	return null;
 }
 
 async function flagBroken(app: App, file: TFile, broken: boolean): Promise<void> {
