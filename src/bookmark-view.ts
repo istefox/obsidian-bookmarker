@@ -22,7 +22,7 @@ export const BOOKMARK_VIEW_TYPE = "bookmarker-grid";
 const MAX_CARD_TAGS = 4;
 const MAX_RELATED = 50;
 
-/** Raindrop-like board: a grid of cover cards for the saved bookmarks (read-only). */
+/** Raindrop-like board: a grid of cover cards for the saved bookmarks, fully interactive. */
 export class BookmarkView extends ItemView {
 	private readonly plugin: BookmarkerPlugin;
 	private items: BookmarkItem[] = [];
@@ -401,7 +401,9 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
-		const folders = unique(this.items.map((i) => i.folder).filter(Boolean)).sort();
+		const folders = unique(
+			visibleItems(this.items, this.showHidden).map((i) => i.folder).filter(Boolean),
+		).sort();
 		const folderSel = toolbar.createEl("select", { cls: "bookmarker-folder-select" });
 		folderSel.createEl("option", { value: "", text: "All folders" });
 		for (const folder of folders) {
@@ -412,7 +414,9 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
-		const types = unique(this.items.map((i) => i.type).filter(Boolean)).sort();
+		const types = unique(
+			visibleItems(this.items, this.showHidden).map((i) => i.type).filter(Boolean),
+		).sort();
 		const typeSel = toolbar.createEl("select", { cls: "bookmarker-type-select" });
 		typeSel.createEl("option", { value: "", text: "All types" });
 		for (const type of types) typeSel.createEl("option", { value: type, text: type });
@@ -578,7 +582,7 @@ export class BookmarkView extends ItemView {
 		this.tagSectionEl.empty();
 
 		const counts = new Map<string, number>();
-		for (const item of this.items) {
+		for (const item of visibleItems(this.items, this.showHidden)) {
 			for (const tag of item.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
 		}
 		const tags = [...counts.keys()].sort((a, b) =>
@@ -730,38 +734,26 @@ export class BookmarkView extends ItemView {
 		for (const item of items) this.renderCard(item);
 	}
 
+	/** Builds the shared filter options from current view state, for `matchesFilters`. */
+	private filterOptions(): BookmarkFilterOptions {
+		return {
+			search: this.search,
+			searchScope: this.searchScope,
+			activeCategory: this.activeCategory,
+			domainFilter: this.domainFilter,
+			folderFilter: this.folderFilter,
+			typeFilter: this.typeFilter,
+			favoritesOnly: this.favoritesOnly,
+			brokenOnly: this.brokenOnly,
+			tagFilter: this.tagFilter,
+			showHidden: this.showHidden,
+		};
+	}
+
 	private filtered(): BookmarkItem[] {
-		if (this.relatedTo) return this.relatedItems(this.relatedTo);
-		// Substring token AND: every whitespace-separated word must appear (case-insensitive)
-		// in the item's searchable text. Predictable and word-order independent.
-		const terms = this.search ? this.search.split(/\s+/).filter(Boolean) : [];
-		const result = this.items.filter((item) => {
-			if (item.hidden && !this.showHidden) return false;
-			// Category scope: constrain to the entered category unless scope is global.
-			if (
-				this.searchScope === "category" &&
-				this.activeCategory !== null &&
-				item.folder !== this.activeCategory
-			) {
-				return false;
-			}
-			if (
-				this.domainFilter &&
-				item.domain.toLowerCase().replace(/^www\./, "") !== this.domainFilter
-			) {
-				return false;
-			}
-			if (this.folderFilter && item.folder !== this.folderFilter) return false;
-			if (this.typeFilter && item.type !== this.typeFilter) return false;
-			if (this.favoritesOnly && !item.favorite) return false;
-			if (this.brokenOnly && !item.broken) return false;
-			if (this.tagFilter && !item.tags.includes(this.tagFilter)) return false;
-			if (terms.length) {
-				const text = haystack(item).toLowerCase();
-				if (!terms.every((term) => text.includes(term))) return false;
-			}
-			return true;
-		});
+		const opts = this.filterOptions();
+		if (this.relatedTo) return this.relatedItems(this.relatedTo, opts);
+		const result = this.items.filter((item) => matchesFilters(item, opts));
 		return this.sortItems(result);
 	}
 
@@ -782,32 +774,8 @@ export class BookmarkView extends ItemView {
 	}
 
 	/** Bookmarks related to the source, ranked by shared tags, then domain, then type. */
-	private relatedItems(source: BookmarkItem): BookmarkItem[] {
-		const srcTags = new Set(source.tags.map((t) => t.toLowerCase()));
-		const srcDomain = source.domain.toLowerCase().replace(/^www\./, "");
-		const scored = this.items
-			.filter((c) => {
-				if (c.file.path === source.file.path) return false;
-				if (c.hidden && !this.showHidden) return false;
-				return true;
-			})
-			.map((c) => {
-				const sharedTags = c.tags.filter((t) => srcTags.has(t.toLowerCase())).length;
-				const cDomain = c.domain.toLowerCase().replace(/^www\./, "");
-				const sameDomain = srcDomain && cDomain === srcDomain ? 1 : 0;
-				const sameType = c.type === source.type ? 1 : 0;
-				return { item: c, sharedTags, sameDomain, sameType };
-			})
-			// Include on at least one shared tag or the same domain; type alone is too broad.
-			.filter((s) => s.sharedTags >= 1 || s.sameDomain === 1);
-		scored.sort(
-			(a, b) =>
-				b.sharedTags - a.sharedTags ||
-				b.sameDomain - a.sameDomain ||
-				b.sameType - a.sameType ||
-				b.item.created.localeCompare(a.item.created),
-		);
-		return scored.slice(0, MAX_RELATED).map((s) => s.item);
+	private relatedItems(source: BookmarkItem, opts: BookmarkFilterOptions): BookmarkItem[] {
+		return computeRelatedItems(this.items, source, opts);
 	}
 
 	private renderCard(item: BookmarkItem): void {
@@ -826,6 +794,7 @@ export class BookmarkView extends ItemView {
 		select.addEventListener("change", () => {
 			if (select.checked) this.selected.add(item.file.path);
 			else this.selected.delete(item.file.path);
+			this.renderGrid();
 		});
 
 		const source = resolveCover(this.app, item.image, item.file.path);
@@ -992,7 +961,7 @@ export class BookmarkView extends ItemView {
 	private async deleteBookmark(item: BookmarkItem): Promise<void> {
 		// The board auto-refreshes from the vault delete event. A downloaded cover
 		// nothing else points at goes with the note.
-		const { failed } = await trashBookmarks(this.app, this.plugin.settings, [item.file]);
+		const { failed } = await trashBookmarks(this.plugin, [item.file]);
 		if (failed) new Notice("Delete failed — see the console for details.");
 	}
 
@@ -1020,8 +989,7 @@ export class BookmarkView extends ItemView {
 		);
 		if (targets.length === 0) return;
 		const { trashed, failed } = await trashBookmarks(
-			this.app,
-			this.plugin.settings,
+			this.plugin,
 			targets.map((item) => item.file),
 		);
 		for (const file of trashed) this.selected.delete(file.path);
@@ -1110,11 +1078,110 @@ export class BookmarkView extends ItemView {
 
 }
 
-/** The text a fuzzy search runs against for one bookmark. */
+/** The text a search runs against for one bookmark (substring, AND across terms). */
 function haystack(item: BookmarkItem): string {
 	return `${item.title} ${item.domain} ${item.url} ${item.tags.join(" ")} ${item.description}`;
 }
 
+/** The shared filter criteria applied by both normal browsing and related-bookmarks mode. */
+export interface BookmarkFilterOptions {
+	search: string;
+	searchScope: "global" | "category";
+	activeCategory: string | null;
+	domainFilter: string;
+	folderFilter: string;
+	typeFilter: string;
+	favoritesOnly: boolean;
+	brokenOnly: boolean;
+	tagFilter: string;
+	showHidden: boolean;
+}
+
+/**
+ * True when `item` satisfies every active filter (search terms, category scope,
+ * domain/folder/type filters, favorites/broken-only, tag filter, hidden visibility).
+ * Shared by `filtered()`'s normal-mode branch and `relatedItems()`'s candidate
+ * filtering, so related-bookmarks mode narrows by the same criteria instead of
+ * bypassing them.
+ */
+export function matchesFilters(item: BookmarkItem, opts: BookmarkFilterOptions): boolean {
+	if (item.hidden && !opts.showHidden) return false;
+	// Category scope: constrain to the entered category unless scope is global.
+	if (
+		opts.searchScope === "category" &&
+		opts.activeCategory !== null &&
+		item.folder !== opts.activeCategory
+	) {
+		return false;
+	}
+	if (
+		opts.domainFilter &&
+		item.domain.toLowerCase().replace(/^www\./, "") !== opts.domainFilter
+	) {
+		return false;
+	}
+	if (opts.folderFilter && item.folder !== opts.folderFilter) return false;
+	if (opts.typeFilter && item.type !== opts.typeFilter) return false;
+	if (opts.favoritesOnly && !item.favorite) return false;
+	if (opts.brokenOnly && !item.broken) return false;
+	if (opts.tagFilter && !item.tags.includes(opts.tagFilter)) return false;
+	// Substring token AND: every whitespace-separated word must appear (case-insensitive)
+	// in the item's searchable text. Predictable and word-order independent.
+	const terms = opts.search ? opts.search.split(/\s+/).filter(Boolean) : [];
+	if (terms.length) {
+		const text = haystack(item).toLowerCase();
+		if (!terms.every((term) => text.includes(term))) return false;
+	}
+	return true;
+}
+
+/**
+ * Bookmarks related to `source` out of `candidates`, ranked by shared tags, then
+ * domain, then type. Candidates are narrowed by `matchesFilters(c, opts)` (the same
+ * criteria as normal browsing mode) before scoring/ranking, so an over-`MAX_RELATED`
+ * candidate pool is filtered first and then truncated, not the other way around.
+ */
+export function computeRelatedItems(
+	candidates: BookmarkItem[],
+	source: BookmarkItem,
+	opts: BookmarkFilterOptions,
+): BookmarkItem[] {
+	const srcTags = new Set(source.tags.map((t) => t.toLowerCase()));
+	const srcDomain = source.domain.toLowerCase().replace(/^www\./, "");
+	const scored = candidates
+		.filter((c) => {
+			if (c.file.path === source.file.path) return false;
+			return matchesFilters(c, opts);
+		})
+		.map((c) => {
+			const sharedTags = c.tags.filter((t) => srcTags.has(t.toLowerCase())).length;
+			const cDomain = c.domain.toLowerCase().replace(/^www\./, "");
+			const sameDomain = srcDomain && cDomain === srcDomain ? 1 : 0;
+			const sameType = c.type === source.type ? 1 : 0;
+			return { item: c, sharedTags, sameDomain, sameType };
+		})
+		// Include on at least one shared tag or the same domain; type alone is too broad.
+		.filter((s) => s.sharedTags >= 1 || s.sameDomain === 1);
+	scored.sort(
+		(a, b) =>
+			b.sharedTags - a.sharedTags ||
+			b.sameDomain - a.sameDomain ||
+			b.sameType - a.sameType ||
+			b.item.created.localeCompare(a.item.created),
+	);
+	return scored.slice(0, MAX_RELATED).map((s) => s.item);
+}
+
 function unique(values: string[]): string[] {
 	return Array.from(new Set(values));
+}
+
+/**
+ * Items the board's other surfaces (tag counts, folder/type filter options) may derive
+ * from: excludes hidden bookmarks unless the Hidden toggle is on, mirroring the same
+ * `item.hidden && !showHidden` condition the card grid and category tiles already use.
+ * Exported so it can be unit-tested without instantiating the `ItemView`.
+ */
+export function visibleItems(items: BookmarkItem[], showHidden: boolean): BookmarkItem[] {
+	return items.filter((item) => !(item.hidden && !showHidden));
 }

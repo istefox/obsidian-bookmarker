@@ -20,4 +20,13 @@ export default [
 			"obsidianmd/ui/sentence-case": "off",
 		},
 	},
+	{
+		// Test files are dev-only: esbuild's entry point is src/main.ts, so
+		// *.test.ts is never reachable from the bundle and the mobile/no-Node-deps
+		// constraint (CLAUDE.md "Gotchas") does not apply to them.
+		files: ["src/**/*.test.ts"],
+		rules: {
+			"import/no-nodejs-modules": "off",
+		},
+	},
 ];
