@@ -2,7 +2,8 @@ import { Notice, TFile } from "obsidian";
 import type BookmarkerPlugin from "./main";
 import { fetchHtml, parseMetadata } from "./metadata";
 import { sanitizeFileName, writeBookmarkNote } from "./note-writer";
-import { fetchScreenshot } from "./image";
+import { fetchScreenshot, resolveFaviconUrl } from "./image";
+import { triggerWaybackSnapshot } from "./archive";
 import { assetsFolder } from "./cover";
 import { isSafeRemoteUrl } from "./url-safety";
 import { classifyBookmark } from "./classifier";
@@ -63,7 +64,11 @@ export async function captureBookmark(
 			tags: classification.tags,
 			folder: classification.folder,
 			imageUrl: candidates[0] ?? null,
-			faviconUrl: metadata.faviconUrl,
+			faviconUrl: resolveFaviconUrl(
+				metadata.faviconUrl,
+				metadata.domain,
+				settings.enableFaviconFallback,
+			),
 			domain: metadata.domain,
 			type: metadata.type,
 			favorite: false,
@@ -92,6 +97,7 @@ export async function captureBookmark(
 		if (!finalDraft) return; // cancelled in the review modal
 
 		const notePath = await writeBookmarkNote(app, settings, finalDraft);
+		if (settings.enableWaybackArchive) triggerWaybackSnapshot(url);
 		new Notice(`Bookmark saved: ${notePath}`);
 
 		const file = app.vault.getAbstractFileByPath(notePath);

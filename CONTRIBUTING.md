@@ -20,7 +20,7 @@ npm run build    # type-check + production bundle
 npm run lint     # eslint-plugin-obsidianmd rules
 ```
 
-CI (`.github/workflows/release.yml`) only runs `npm run build` on a semver tag push, not on pull requests, so `npm run lint` is not enforced automatically — run it yourself.
+CI (`.github/workflows/ci.yml`) runs `npm run build`, `npm run lint`, and the test suite (when one exists on the branch) on every pull request and on every push to `main`, so a regression is caught before merge. `.github/workflows/release.yml` is separate: it only runs `npm run build` on a semver tag push, to produce the release artifacts.
 
 The `obsidianmd/ui/sentence-case` rule is disabled project-wide (`eslint.config.mjs`): it would lowercase proper nouns (Wayback Machine, Pocket, Raindrop, Netscape), URL/protocol examples, and key prefixes (`sk-ant-`) that must stay as-is.
 
