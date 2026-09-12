@@ -27,4 +27,4 @@ docs/manifests/
 .claude/.triage-fix-last-feat_organize-tidying.json
 
 # Test build output (npm run test)
-.node-test-out/
+node-test-out/
