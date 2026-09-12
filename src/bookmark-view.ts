@@ -401,7 +401,9 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
-		const folders = unique(this.items.map((i) => i.folder).filter(Boolean)).sort();
+		const folders = unique(
+			visibleItems(this.items, this.showHidden).map((i) => i.folder).filter(Boolean),
+		).sort();
 		const folderSel = toolbar.createEl("select", { cls: "bookmarker-folder-select" });
 		folderSel.createEl("option", { value: "", text: "All folders" });
 		for (const folder of folders) {
@@ -412,7 +414,9 @@ export class BookmarkView extends ItemView {
 			this.renderGrid();
 		});
 
-		const types = unique(this.items.map((i) => i.type).filter(Boolean)).sort();
+		const types = unique(
+			visibleItems(this.items, this.showHidden).map((i) => i.type).filter(Boolean),
+		).sort();
 		const typeSel = toolbar.createEl("select", { cls: "bookmarker-type-select" });
 		typeSel.createEl("option", { value: "", text: "All types" });
 		for (const type of types) typeSel.createEl("option", { value: type, text: type });
@@ -578,7 +582,7 @@ export class BookmarkView extends ItemView {
 		this.tagSectionEl.empty();
 
 		const counts = new Map<string, number>();
-		for (const item of this.items) {
+		for (const item of visibleItems(this.items, this.showHidden)) {
 			for (const tag of item.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
 		}
 		const tags = [...counts.keys()].sort((a, b) =>
@@ -1171,4 +1175,14 @@ export function computeRelatedItems(
 
 function unique(values: string[]): string[] {
 	return Array.from(new Set(values));
+}
+
+/**
+ * Items the board's other surfaces (tag counts, folder/type filter options) may derive
+ * from: excludes hidden bookmarks unless the Hidden toggle is on, mirroring the same
+ * `item.hidden && !showHidden` condition the card grid and category tiles already use.
+ * Exported so it can be unit-tested without instantiating the `ItemView`.
+ */
+export function visibleItems(items: BookmarkItem[], showHidden: boolean): BookmarkItem[] {
+	return items.filter((item) => !(item.hidden && !showHidden));
 }

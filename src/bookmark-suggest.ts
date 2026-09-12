@@ -15,6 +15,9 @@ export function listBookmarkFiles(app: App, settings: BookmarkerSettings): Bookm
 		if (file.path !== root && !file.path.startsWith(prefix)) continue;
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
 		if (!fm || fm.source !== "obsidian-bookmarker") continue;
+		// No session/lock state reaches this global command, so hidden must mean hidden,
+		// unconditionally: never offer a live link into a hidden bookmark's note.
+		if (fm.hidden === true) continue;
 		const title = typeof fm.title === "string" && fm.title ? fm.title : file.basename;
 		out.push({ file, title });
 	}

@@ -1,7 +1,7 @@
 <!-- project-tasks: prefix=BM lastId=19 -->
 # PROJECT TASKS
 
-Updated: 2026-09-12 · Open: 9 (P1: 1) · In progress: 0
+Updated: 2026-09-12 · Open: 8 (P1: 1) · In progress: 0
 
 ## GitHub Issues
 
@@ -19,8 +19,6 @@ workaround, then documentation/housekeeping.
 
 - [ ] `BM-002` **P1** Deleting a bookmark can also delete a manually-placed image, ownership is inferred from folder path alone — `src/cover-gc.ts:83` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
   - Related to the BM-001/BM-006 cover chain but needs its own decision first (explicit ownership tag vs. redefining `_assets` as fully plugin-managed) — recommend a separate PR
-- [ ] `BM-012` **P2** The hidden-bookmarks password is cosmetic only, tag counts, folder/type options and the insert-link picker all still read/list hidden bookmarks — `src/bookmark-view.ts:581` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
-  - File overlaps BM-010/BM-011 (`bookmark-view.ts`) but is privacy-sensitive — fold into that PR only if review depth stays adequate, otherwise keep separate
 - [ ] `BM-013` **P2** favicon-fallback and automatic-Wayback settings are shown in the UI and saved but never read anywhere in the runtime — `src/settings.ts:269` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
   - Needs a decision first: retire the controls, or implement the advertised behavior
 - [ ] `BM-014` **P3** npm audit still reports 4 dev-only advisories (brace-expansion, fast-uri, js-yaml high; esbuild moderate), none reachable from runtime — `package-lock.json` <!-- src:review kind:fix opened:2026-09-12 runs:1 -->
@@ -69,3 +67,4 @@ _none_
 - [x] `BM-010` Per-card checkbox change now triggers `renderGrid()`, so "Delete broken"/"Hide selected" button visibility updates immediately, matching the select-all/clear-selection pattern (2026-09-12)
 - [x] `BM-011` Related-bookmarks mode now applies the same search/scope/domain/folder/type/favorites/broken/tag filters as normal mode, narrowing candidates before ranking/`MAX_RELATED` truncation instead of bypassing them (2026-09-12)
 - [x] `BM-008` Dedup merge now also preserves the victim's custom (non-schema) frontmatter properties, not already set on the keeper, and any other body content beyond the Notes bullets (appended under a clearly attributed "Merged from duplicate" section), instead of silently dropping them (2026-09-12)
+- [x] `BM-012` Tag-panel counts, folder/type dropdown options, and the "Insert bookmark link" picker no longer leak hidden bookmarks' tags/folders/types/existence; the board-side surfaces now share a `visibleItems(items, showHidden)` helper matching the grid's own hidden check, and the global insert-link picker (no session/lock state to check) now excludes hidden notes unconditionally (2026-09-12)
