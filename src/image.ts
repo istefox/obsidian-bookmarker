@@ -3,6 +3,7 @@ import { requestUrl } from "obsidian";
 const MICROLINK_BASE = "https://api.microlink.io/";
 const WSRV_BASE = "https://wsrv.nl/";
 const TARGET_WIDTH = 1200;
+const FAVICON_FALLBACK_BASE = "https://www.google.com/s2/favicons";
 
 /**
  * Fetch a page screenshot via Microlink. The call is SYNCHRONOUS: it returns the
@@ -46,4 +47,20 @@ export function unproxiedImage(imageUrl: string): string {
 	} catch {
 		return imageUrl;
 	}
+}
+
+/** A favicon-service URL for `domain`, used when the page itself declares none. */
+export function faviconFallbackUrl(domain: string): string {
+	return `${FAVICON_FALLBACK_BASE}?sz=64&domain=${encodeURIComponent(domain)}`;
+}
+
+/** The favicon URL to use for a draft: the page's own, or the fallback service when
+ * the page declared none and the setting allows it. */
+export function resolveFaviconUrl(
+	pageFaviconUrl: string | null,
+	domain: string,
+	enableFallback: boolean,
+): string | null {
+	if (pageFaviconUrl) return pageFaviconUrl;
+	return enableFallback ? faviconFallbackUrl(domain) : null;
 }
