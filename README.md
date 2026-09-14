@@ -4,7 +4,11 @@ Save any web page into your Obsidian vault as a clean Markdown note, with a prev
 
 The goal is a Raindrop-style bookmarking experience that lives entirely in plain Markdown files you own.
 
+![Board view: a card grid with covers, tags, and filters](docs/screenshots/board-view.png)
+
 ## What's new
+
+**0.1.30.** The favicon-fallback and Wayback Machine snapshot settings now actually run (they existed in the UI before but were never wired up). Several correctness and privacy fixes: hidden bookmarks no longer leak into tag counts or the link picker, deduplicate no longer drops custom frontmatter or body content on merge, related-bookmarks mode now respects the active filters, and a cover's body embed is only ever touched when it is the plugin's own, never an unrelated image elsewhere in the note.
 
 **Bookmark bar.** A browser-style strip across the top of the workspace, above the ribbon and both sidebars. Starred bookmarks sit on it as one-click buttons with their favicons; each category becomes a button that drops down its links. Clicking one opens the site, Cmd/Ctrl-click opens the note instead, and the note you are working in stays fully visible the whole time. It is off by default: turn it on in Settings, then toggle it from the ribbon icon or the "Toggle bookmark bar" command, which takes a hotkey.
 
@@ -12,7 +16,7 @@ The goal is a Raindrop-style bookmarking experience that lives entirely in plain
 
 Deleting a bookmark now takes its downloaded cover with it, so `_bookmarks/_assets/` stops growing forever. Only images the plugin downloaded into that folder are ever removed, only when no other note still points at one, and they go to the trash like any other deleted file. An image you picked from elsewhere in your vault is yours and always survives the bookmark.
 
-Full notes for every version are on the [releases page](https://github.com/istefox/obsidian-bookmarker/releases).
+Full history in [CHANGELOG.md](CHANGELOG.md), or on the [releases page](https://github.com/istefox/obsidian-bookmarker/releases).
 
 ## What it does
 
@@ -145,6 +149,14 @@ Commands available from the command palette:
 - **Import bookmarks…**: opens the import window for an HTML or CSV file.
 - **Import from Raindrop**: pulls every bookmark from your Raindrop account through the API, with covers and collections. Set the token in settings first.
 - **Insert bookmark link**: fuzzy-search your saved bookmarks and insert a wiki-link to the one you pick at the cursor.
+
+### Importing from Raindrop
+
+1. Get a test token from raindrop.io: **Settings → Integrations → For Developers**, then create a new app and copy its test token.
+2. In Obsidian, go to **Settings → Bookmarker → Import**, paste the token into **Raindrop API token**, and click **Test** to confirm it works.
+3. Open the command palette (Cmd/Ctrl+P) and run **Import from Raindrop**.
+
+That's it, no need to open the board first. The import pulls every bookmark from your Raindrop account, covers and collections included, and writes them as notes under your root folder.
 
 ### Organize
 
